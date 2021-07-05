@@ -1,0 +1,54 @@
+starting analysis exp tmox42619 for run 291
+Traceback (most recent call last):
+  File "./src/hits2h5.py", line 227, in <module>
+    main()
+  File "./src/hits2h5.py", line 84, in main
+    for run in ds.runs():
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/psana/psexp/serial_ds.py", line 75, in runs
+    while self._start_run():
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/psana/psexp/serial_ds.py", line 66, in _start_run
+    super()._setup_run_calibconst()
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/psana/psexp/ds_base.py", line 423, in _setup_run_calibconst
+    calib_const = wu.calib_constants_all_types(det_name, exp=expt, run=runnum)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/psana/pscalib/calib/MDBWebUtils.py", line 291, in calib_constants_all_types
+    docs = find_docs(dbname, colname, query, url)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/psana/pscalib/calib/MDBWebUtils.py", line 128, in find_docs
+    r = request(uri, {"query_string": query_string})
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/psana/pscalib/calib/MDBWebUtils.py", line 91, in request
+    r = get(url, query)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/requests/api.py", line 76, in get
+    return request('get', url, params=params, **kwargs)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/requests/api.py", line 61, in request
+    return session.request(method=method, url=url, **kwargs)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/requests/sessions.py", line 542, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/requests/sessions.py", line 677, in send
+    history = [resp for resp in gen]
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/requests/sessions.py", line 677, in <listcomp>
+    history = [resp for resp in gen]
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/requests/sessions.py", line 245, in resolve_redirects
+    **adapter_kwargs
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/requests/sessions.py", line 655, in send
+    r = adapter.send(request, **kwargs)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/requests/adapters.py", line 449, in send
+    timeout=timeout
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/urllib3/connectionpool.py", line 706, in urlopen
+    chunked=chunked,
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/urllib3/connectionpool.py", line 445, in _make_request
+    six.raise_from(e, None)
+  File "<string>", line 3, in raise_from
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/site-packages/urllib3/connectionpool.py", line 440, in _make_request
+    httplib_response = conn.getresponse()
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/http/client.py", line 1369, in getresponse
+    response.begin()
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/http/client.py", line 310, in begin
+    version, status, reason = self._read_status()
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/http/client.py", line 271, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/socket.py", line 589, in readinto
+    return self._sock.recv_into(b)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/ssl.py", line 1071, in recv_into
+    return self.read(nbytes, buffer)
+  File "/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/lib/python3.7/ssl.py", line 929, in read
+    return self._sslobj.read(len, buffer)
+KeyboardInterrupt

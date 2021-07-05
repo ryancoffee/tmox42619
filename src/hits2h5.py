@@ -186,15 +186,22 @@ def main():
 					logic = idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2)
 					e,ne = scanedges(logic,logicthresh[key],inflate)
 				if init: 
-					tofs[key] = e
-					addresses[key] = [0]
-					nedges[key] = [ne]
+					if ne<1:
+						addresses[key] = [int(0)]
+						nedges[key] = [int(0)]
+						tofs[key] = [] 
+					else:
+						addresses[key] = [int(1)] 
+						nedges[key] = [int(ne)]
+						tofs[key] = e
 				else:
-					e,ne = scanedges(logic,logicthresh[key],inflate)
-					tofs[key] += e
-					a = len(tofs[key])
-					addresses[key] += [a] # This is Clemens Weninger trick for addressing a flat array as if doing pointers in c.
-					nedges[key] += [ne]
+					if ne<1:
+						addresses[key] += [int(0)]
+						nedges[key] += [int(0)]
+					else:
+						addresses[key] += [int(1+len(tofs[key]))] 
+						nedges[key] += [int(ne)]
+						tofs[key] += e
 
 
 			if init and len(v)>0: init = False
