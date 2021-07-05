@@ -141,11 +141,10 @@ def main():
 				thisl3 += 0.5
 			bs = np.sum(baseline)/len(baseline)
 			vlscrop = vlswv[950:1250]-bs
-			vlscum = np.cumsum(vlscrop)
 			num = np.sum(np.array([i*vlscrop[i] for i in range(len(vlscrop))]))
-			den = vlscum[-1]
+			den = np.sum(vlscrop)
 			if type(den) == type(None):
-				print('skip per vlscum')
+				print('skip per vlscrop')
 				continue
 			if den<5000: 
 				if eventnum%50<1: print(eventnum)
