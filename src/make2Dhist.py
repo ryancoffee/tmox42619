@@ -51,9 +51,9 @@ def main():
         vlsmean = np.mean(data['vls'],axis=0)
         vlscsum = np.cumsum(data['vls'],axis=1)
         h = fill2dhist(vlscsum)
-        tof = data['port_12_tofs']
-        tofaddresses = data['port_12_addresses']
-        tofnedges= data['port_12_nedges']
+        tof = data['port_14_tofs']
+        tofaddresses = data['port_14_addresses']
+        tofnedges= data['port_14_nedges']
         print(tof.shape)
         print('\t'.join((tof[:20]-25000).astype(str)))
         print('\t'.join(tofaddresses[:20].astype(str)))
