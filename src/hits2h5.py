@@ -185,20 +185,21 @@ def main():
 					logic = idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2)
 					e,ne = scanedges(logic,logicthresh[key],inflate)
 				if init: 
+                                        tofs[key] = [0] # setting the 0'th address of tofs[key] to catch all addresses for nedges == 0 case
 					if ne<1:
 						addresses[key] = [int(0)]
 						nedges[key] = [int(0)]
-						tofs[key] = [] 
+						tofs[key] += [] 
 					else:
 						addresses[key] = [int(1)] 
 						nedges[key] = [int(ne)]
-						tofs[key] = e
+						tofs[key] += e
 				else:
 					if ne<1:
 						addresses[key] += [int(0)]
 						nedges[key] += [int(0)]
 					else:
-						addresses[key] += [int(1+len(tofs[key]))] 
+						addresses[key] += [int(len(tofs[key]))] 
 						nedges[key] += [int(ne)]
 						tofs[key] += e
 
