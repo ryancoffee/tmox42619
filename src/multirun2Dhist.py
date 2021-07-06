@@ -39,18 +39,8 @@ def fill2dhist(csum):
             h[i,k] += 1
     return h
 
-def main():
-    if len(sys.argv)<2:
-        print('syntax: make2Dhist.py <fnames>')
-        return
-    fnames = list(sys.argv[1:])
-    data = {}
-    fullname = sys.argv[1]
-    datadir = './'
-    filefront = 'hits.h5'
-
+def processmultitofs(fnames,toft,tofv,tofd,portstring):
     for fname in fnames:
-        #with h5py.File('./data_fs/h5files/%s'%(fname),'r') as f:
         m = re.search('^(.+)/h5files/(.+).h5',fname)
         if m:
             fullname = m.group(0)
@@ -66,53 +56,59 @@ def main():
         # here now the data is stored in system memory and we close the h5 file
         vlsmean = np.mean(data['vls'],axis=0)
         vlscsum = np.cumsum(data['vls'],axis=1)
-        h = fill2dhist(vlscsum)
 
-        spinds = samplePDF(vlscsum,32) # repeate this for every tof individually
-        portstring = 'port_14'
+        spinds = samplePDF(vlscsum,256) # repeate this for every tof individually
+
         tof = data['%s_tofs'%portstring]
         tofaddresses = data['%s_addresses'%portstring]
         tofnedges= data['%s_nedges'%portstring]
-        print(tof.shape)
-        print('tofs:\t\t'+'\t\t'.join((tof[:10]).astype(str)))
-        print('adds:\t\t'+'\t\t'.join(tofaddresses[:10].astype(str)))
-        print('edges:\t\t'+'\t\t'.join(tofnedges[:10].astype(str)))
 
         shotlist = []
         toflist = []
 
-        tofv = [] # for vls spectrometer index
-        toft = [] # for time-of-flight index
-        tofd = [] # for counting
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
                 toflist = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ].astype(np.uint32)
                 shotlist.append(np.uint16(i))
-                if i%10==0: print(shotlist[-1],toflist)
+                if i%100==0: print(shotlist[-1],toflist)
                 for j in spinds[shotlist[-1]]: ### change this to choose a fresh random set of 16 for each hit
-                    #tofhist[toflist[i],j] += 1
                     for t in toflist:
-                        if t<2**16:
+                        if t<(2**16-1):
                             toft += [t]
                             tofv += [j]
                             tofd += [1]
+    return toft,tofv,tofd
 
-        #tofhist = np.zeros((2**16,vlsmean.shape[0]),dtype=np.int8)
-        print(np.max(toft),np.max(tofv))
+def main():
+    if len(sys.argv)<2:
+        print('syntax: make2Dhist.py <fnames>')
+        return
+    fnames = list(sys.argv[1:])
+    data = {}
+    fullname = sys.argv[1]
+    datadir = './'
+    filefront = 'hits.h5'
 
-        tofhist_dok = coo_matrix((tofd,(toft,tofv)),shape=((2**16,vlsmean.shape[0])),dtype=np.uint16).tocsr().todok()
+    m = re.search('^(.+)/h5files/(.+).h5',fname)
+    if m:
+        datadir = m.group(1)
+    else:
+        print('syntax: main h5file list')
+        return
 
+    portstring = 'port_14'
+    tofv = [] # for vls spectrometer index
+    toft = [] # for time-of-flight index
+    tofd = [] # for counting
 
+    toft,tofv,tofd = processmultitofs(fnames,toft,tofv,tofd,portstring)
+    tofhist_dok = coo_matrix((tofd,(toft,tofv)),shape=((2**16,vlsmean.shape[0])),dtype=np.uint16).tocsr().todok()
 
-
-        np.savetxt('%s/ascii/%s.origvls.dat'%(datadir,filefront),data['vls'][:10,:].T,fmt='%i')
-        np.savetxt('%s/ascii/%s.tmpvls.dat'%(datadir,filefront),vlscsum[:10,:].T,fmt='%i')
-        #np.savetxt('%s/ascii/%s.hist.dat'%(datadir,filefront),tofhist_csr,fmt='%i')
-        histname = '%s/ascii/%s.%s.hist.dat'%(datadir,filefront,portstring)
-        f = open(histname,'w')
-        for key in tofhist_dok.keys():
-            print('%i\t%i\t%i'%(key[0],key[1],tofhist_dok[key] ),file=f)
-        f.close()
+    histname = '%s/ascii/%s.hist.dat'%(datadir,portstring)
+    f = open(histname,'w')
+    for key in tofhist_dok.keys():
+        print('%i\t%i\t%i'%(key[0],key[1],tofhist_dok[key] ),file=f)
+    f.close()
     return
 
 
