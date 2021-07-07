@@ -107,12 +107,14 @@ def main():
 		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
 		t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096}
 
-		logicthresh = {0:-2000, 1:-2000, 2:-100, 4:-2000, 5:-2000, 12:-2000, 13:-2000, 14:-2000, 15:-2000, 16:-2000}
+
+		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
+		logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
 
 		init = True
 		sz = 0
 		inflate = 4
-		baselim = 1000
+		baselim = 1000 
 		for evt in run.events():
 			if eventnum > nshots:
 				break
@@ -140,24 +142,25 @@ def main():
 			else:
 				thisl3 += 0.5
 			bs = np.sum(baseline)/len(baseline)
-			vlscrop = vlswv[950:1250]-bs
-			num = np.sum(np.array([i*vlscrop[i] for i in range(len(vlscrop))]))
-			den = np.sum(vlscrop)
+			vlscwv = vlswv-int(bs)
+			num = np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))]))
+			den = np.sum(vlswv)
 			if type(den) == type(None):
-				print('skip per vlscrop')
+				print('skip per vlswv')
 				continue
 			if den<5000: 
-				if eventnum%50<1: print(eventnum)
+				if eventnum%50<1: 
+					print(eventnum)
 				eventnum += 1
 				continue
 
 			if init:
-				v = [vlscrop]
+				v = [vlswv]
 				vc = [np.uint16(num/den)]
 				vs = [np.uint64(den)]
 				l3 = [np.uint16(thisl3)]
 			else:
-				v += [vlscrop]
+				v += [vlswv]
 				vc += [np.uint16(num/den)]
 				vs += [np.uint64(den)]
 				l3 += [np.uint16(thisl3)]
@@ -167,15 +170,17 @@ def main():
 			sz = hsd.raw.waveforms(evt)[ chans[0] ][0].shape[0]
 
 			for key in chans:
-				s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16)
+				# hard coding the scale inflation for accounting the 4 different ADC offsets.
+				s = 4*np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16)
 
 				if type(s) == type(None):
 					e = []
 					ne = 0
 				else:
-
-					base = np.mean(s[:baselim])
-					s -= np.int16(base)
+					nadcs = 4
+					for adc in range(nadcs):
+						base = np.mean(s[adc:baselim:nadcs])
+						s[adc::4] -= np.int16(base)
 					wave = np.append(s,np.flip(s,axis=0))
 					WAVE = dct(wave)
 					WAVE = rollon(WAVE,10)
@@ -206,7 +211,9 @@ def main():
 
 			if init and len(v)>0: init = False
 
-			if eventnum%50<1: print(eventnum); eventnum += 1
+			if eventnum%50==0: 
+				print(eventnum)
+			eventnum += 1
 
 		for key in chans:
 			f.create_dataset('port_%i_tofs'%(key),data=tofs[key],dtype=np.uint32)
