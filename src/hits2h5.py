@@ -141,8 +141,8 @@ def main():
 				continue
 			else:
 				thisl3 += 0.5
-			bs = np.sum(baseline)/len(baseline)
-			vlscwv = vlswv-int(bs)
+			bs = np.mean(baseline)
+			vlswv = vlswv-int(bs)
 			num = np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))]))
 			den = np.sum(vlswv)
 			if type(den) == type(None):
@@ -155,12 +155,12 @@ def main():
 				continue
 
 			if init:
-				v = [vlswv]
+				v = [vlswv.astype(np.int16)]
 				vc = [np.uint16(num/den)]
 				vs = [np.uint64(den)]
 				l3 = [np.uint16(thisl3)]
 			else:
-				v += [vlswv]
+				v += [vlswv.astype(np.int16)]
 				vc += [np.uint16(num/den)]
 				vs += [np.uint64(den)]
 				l3 += [np.uint16(thisl3)]
