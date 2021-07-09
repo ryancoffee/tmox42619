@@ -83,7 +83,6 @@ def main():
 
 	for run in ds.runs():
 		#np.savetxt('%s/waveforms.%s.%i.%i.dat'%(scratchdir,expname,runnum,key),wv[key],fmt='%i',header=headstring)
-		f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') #HERE HERE HERE HERE HERE
 		print(run.detnames)
 		eventnum = 0
 		runhsd=True
@@ -102,11 +101,10 @@ def main():
 		tofs = {}
 		addresses = {}
 		nedges = {}
-		chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13}
+		chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number
 		# Note that t0s are aligned with 'prompt' in the digitizer logic signal
 		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
 		t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096}
-
 
 		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 		logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
@@ -171,7 +169,10 @@ def main():
 
 			for key in chans:
 				# hard coding the scale inflation for accounting the 4 different ADC offsets.
-				s = 4*np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16)
+
+                                # wrap in callable method from here to...
+                                # inputs would be int16 waveform, and the inflation factor also include the scaling by 4 to use 14 bits depth instead of only 12
+				s = 4*np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
 
 				if type(s) == type(None):
 					e = []
@@ -180,15 +181,16 @@ def main():
 					nadcs = 4
 					for adc in range(nadcs):
 						base = np.mean(s[adc:baselim:nadcs])
-						s[adc::4] -= np.int16(base)
+						s[adc::4] -= np.int16(base) # this now needs to be a signed int
 					wave = np.append(s,np.flip(s,axis=0))
 					WAVE = dct(wave)
 					WAVE = rollon(WAVE,10)
 					WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0]))
 					DWAVE = np.copy(WAVE)
 					DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0]
-					logic = idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2)
-					e,ne = scanedges(logic,logicthresh[key],inflate)
+					logic = idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
+					e,ne = scanedges(logic,logicthresh[key],inflate) # logic waveform in and edges out
+                                        # to here 
 				if init: 
 					tofs[key] = [0] # setting the 0'th address of tofs[key] to catch all addresses for nedges == 0 case
 					if ne<1:
@@ -215,8 +217,10 @@ def main():
 				print(eventnum)
 			eventnum += 1
 
+		f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') #HERE HERE HERE HERE HERE
+                # use f.create_group('port_%i'%i,portnum)
 		for key in chans:
-			f.create_dataset('port_%i_tofs'%(key),data=tofs[key],dtype=np.uint32)
+			f.create_dataset('port_%i_tofs'%(key),data=tofs[key],dtype=np.uint32) # python int = int64
 			f.create_dataset('port_%i_addresses'%(key),data=addresses[key],dtype=np.uint64)
 			f.create_dataset('port_%i_nedges'%(key),data=nedges[key],dtype=np.uint16)
 		f.create_dataset('vls',data=v,dtype=np.int16)

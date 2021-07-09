@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from scipy.sparse import coo_matrix,csr_matrix
 import re
 
-def samplePDF(csum,nsamples = 10):
+def samplePDFmat(csum,nsamples = 10):
     b = []
     x = csum
     y = np.arange(x.shape[1],dtype=np.uint8) 
@@ -68,7 +68,7 @@ def main():
         vlscsum = np.cumsum(data['vls'],axis=1)
         h = fill2dhist(vlscsum)
 
-        spinds = samplePDF(vlscsum,32) # repeate this for every tof individually
+        spinds = samplePDFmat(vlscsum,32) # repeate this for every tof individually
         portstring = 'port_14'
         tof = data['%s_tofs'%portstring]
         tofaddresses = data['%s_addresses'%portstring]

@@ -7,10 +7,22 @@ from scipy.interpolate import interp1d
 from scipy.sparse import coo_matrix,csr_matrix
 import re
 
-def samplePDF(csum,nsamples = 10):
+def samplePDF(inds,csum,nsamples = 16):
+    x = csum
+    y = inds
+    cs = {}
+    for j in range(len(x)):
+        cs.update({x[j]:y[j]})
+    xx = [v for v in cs.keys()]
+    yy = [v for v in cs.values()]
+    f = interp1d(xx,yy)
+    xnew = np.random.random((nsamples,))*(xx[-2]-xx[1]) + xx[1]
+    return list(f(xnew).astype(np.uint16))
+
+def samplePDFmat(inds,csum,nsamples = 16):
     b = []
     x = csum
-    y = np.arange(x.shape[1],dtype=np.uint8) 
+    y = inds
     for i in range(x.shape[0]):
         cs = {}
         for j in range(x.shape[1]):
@@ -39,7 +51,7 @@ def fill2dhist(csum):
             h[i,k] += 1
     return h
 
-def processmultitofs(fnames,toft,tofv,tofd,vlsmean,portstring):
+def processmultitofs(fnames,toft,tofv,tofd,vlsmean,portnum):
     for fname in fnames:
         data = {}
         m = re.search('^(.+)/h5files/(.+).h5',fname)
@@ -55,17 +67,28 @@ def processmultitofs(fnames,toft,tofv,tofd,vlsmean,portstring):
             for key in f.keys():
                 data[key] = np.squeeze(f[key][()])
         # here now the data is stored in system memory and we close the h5 file
+
         if vlsmean.shape[0]<data['vls'].shape[1]:
             vlsmean = np.mean(data['vls'],axis=0)
         else:
             vlsmean += np.mean(data['vls'],axis=0)
-        vlscsum = np.cumsum(data['vls'],axis=1)
+        vlswindow = (-100,100)
+        peaks = np.argmax(data['vls'],axis=1)
+        vlscsum = []
+        vlsinds = []
+        for i,p in enumerate(peaks):
+            '''
+            if len(vlsinds)==0:
+                vlsinds = [i for i in range( max(0,p-vlswindow[0]) , min(1900,p+vlswindow[1]) )]
+                vlscsum = np.cumsum( (data['vls'][i,vlsinds[-1]] - np.max(data['vls'][i,:20])) )
+            else:
+            '''
+            vlsinds.append([i for i in range( max(0,p+vlswindow[0]) , min(1900,p+vlswindow[1]) )])
+            vlscsum.append( np.cumsum( (data['vls'][i,vlsinds[-1]]   - np.max(data['vls'][i,:20])) ) )
 
-        spinds = samplePDF(vlscsum,128) # repeate this for every tof individually
-
-        tof = data['%s_tofs'%portstring]
-        tofaddresses = data['%s_addresses'%portstring]
-        tofnedges= data['%s_nedges'%portstring]
+        tof = data['port_%i_tofs'%portnum]
+        tofaddresses = data['port_%i_addresses'%portnum]
+        tofnedges= data['port_%i_nedges'%portnum]
 
         shotlist = []
         toflist = []
@@ -73,28 +96,23 @@ def processmultitofs(fnames,toft,tofv,tofd,vlsmean,portstring):
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
                 toflist = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ].astype(np.uint32)
-                shot = np.uint32(i)
-                if i%1000==0: print(shot,toflist)
-                nrolls=0
+                if i%1000==0: print(i,toflist)
                 for t in toflist:
-                    nrolls +=1
-                    if nrolls < len(spinds[shot]//16):
-                        spinds[shot] = np.roll(spinds[shot],-16)
-                    else:
-                        np.random.shuffle(spinds[shot])
-                    for j in spinds[shot][:16]: ### choose a fresh random set of 16 for each hit
-                        if t<(2**16-1):
-                            toft += [t]
-                            tofv += [j]
-                            tofd += [1]
+                    if len(vlsinds[i])>1:
+                        for j in samplePDF(vlsinds[i],vlscsum[i],16): ### choose a fresh random set of 16 for each hit
+                            if t<(2**16-1):
+                                toft += [t]
+                                tofv += [j]
+                                tofd += [1]
     return toft,tofv,tofd,vlsmean
 
 def main():
-    if len(sys.argv)<2:
-        print('syntax: make2Dhist.py <fnames>')
+    if len(sys.argv)<3:
+        print('syntax: make2Dhist.py <portnum> <fnames>')
         return
-    fnames = list(sys.argv[1:])
-    fullname = sys.argv[1]
+    portnum = np.int8(sys.argv[1])
+    fnames = list(sys.argv[2:])
+    fullname = sys.argv[2]
     datadir = './'
     filefront = 'hits.h5'
 
@@ -105,17 +123,16 @@ def main():
         print('syntax: main h5file list')
         return
 
-    portstring = 'port_15'
     vlsmean = np.array((None,),dtype=float)
     tofv = [] # for vls spectrometer index
     toft = [] # for time-of-flight index
     tofd = [] # for counting
 
-    toft,tofv,tofd,vlsmean = processmultitofs(fnames,toft,tofv,tofd,vlsmean,portstring)
+    toft,tofv,tofd,vlsmean = processmultitofs(fnames,toft,tofv,tofd,vlsmean,portnum)
     tofhist_dok = coo_matrix((tofd,(toft,tofv)),shape=((2**16,vlsmean.shape[0])),dtype=np.uint16).tocsr().todok()
 
-    histname = '%s/ascii/%s.hist.dat'%(datadir,portstring)
-    vlsname = '%s/ascii/%s.vls.dat'%(datadir,portstring)
+    histname = '%s/ascii/port_%i.hist.dat'%(datadir,portnum)
+    vlsname = '%s/ascii/port_%i.vls.dat'%(datadir,portnum)
     f = open(histname,'w')
     for key in tofhist_dok.keys():
         print('%i\t%i\t%i'%(key[0],key[1],tofhist_dok[key] ),file=f)
