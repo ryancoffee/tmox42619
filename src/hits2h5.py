@@ -34,7 +34,40 @@ def mypoly(x,order=4):
 		result[:,p] = np.power(result[:,1],int(p))
 	return result
 
-def scanedges(d,minthresh,inflate=1):
+def processEbeam(thisl3,l3,initState):
+	if initState:
+		l3 = [np.uint16(thisl3)]
+	else:
+		l3 += [np.uint16(thisl3)]
+	return l3
+
+def processVls(evt,vls,vlswv,v,vc,vs,vsize,initState):
+	num = np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))]))
+	den = np.sum(vlswv)
+
+	if initState:
+		v = [vlswv.astype(np.int16)]
+		vsize = len(v)
+		vc = [np.uint16(num/den)]
+		vs = [np.uint64(den)]
+	else:
+		v += [vlswv.astype(np.int16)]
+		vc += [np.uint16(num/den)]
+		vs += [np.uint64(den)]
+	return v,vc,vs,vsize
+
+
+def dctLogic(s,inflate=4):
+	sz = s.shape[0]
+	wave = np.append(s,np.flip(s,axis=0))
+	WAVE = dct(wave)
+	WAVE = rollon(WAVE,10)
+	WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0]))
+	DWAVE = np.copy(WAVE)
+	DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0]
+	return idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
+
+def scanedges(d,minthresh):
 	tofs = []
 	sz = d.shape[0]
 	newtloops = 3
@@ -64,6 +97,39 @@ def scanedges(d,minthresh,inflate=1):
 		tofs += [start + x0]
 	return tofs,len(tofs)
 
+def processPort(key,s,tofs,nedges,addresses,initState):
+
+	if type(s) == type(None):
+		e = []
+		ne = 0
+	else:
+		nadcs = 4
+		for adc in range(nadcs):
+			base = np.mean(s[adc:baselim:nadcs])
+			s[adc::4] -= np.int16(base) # this now needs to be a signed int
+		logic = dctLogic(s,inflate)
+		e,ne = scanedges(logic,logicthresh[key]) # logic waveform in and edges out
+	if initState: 
+		sz[key] = s.shape[0]
+		tofs[key] = [0] # setting the 0'th address of tofs[key] to catch all addresses for nedges == 0 case
+		if ne<1:
+			addresses[key] = [int(0)]
+			nedges[key] = [int(0)]
+			tofs[key] += [] 
+		else:
+			addresses[key] = [int(1)] 
+			nedges[key] = [int(ne)]
+			tofs[key] += e
+	else:
+		if ne<1:
+			addresses[key] += [int(0)]
+			nedges[key] += [int(0)]
+		else:
+			addresses[key] += [int(len(tofs[key]))] 
+			nedges[key] += [int(ne)]
+			tofs[key] += e
+	return tofs,nedges,addresses
+
 
 def main():
 	scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
@@ -91,8 +157,6 @@ def main():
 		vls = run.Detector('andor')
 		ebeam = run.Detector('ebeam')
 		wv = {}
-		#wv_dct = {}
-		#wv_dct_deriv = {}
 		wv_logic = {}
 		v = []
 		vc = []
@@ -101,115 +165,58 @@ def main():
 		tofs = {}
 		addresses = {}
 		nedges = {}
-		chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number
+		sz = {}
 		# Note that t0s are aligned with 'prompt' in the digitizer logic signal
 		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
+		chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number
 		t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096}
-
-		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 		logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
+		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
+
 
 		init = True
-		sz = 0
+		vsize = 0
 		inflate = 4
 		baselim = 1000 
 		for evt in run.events():
 			if eventnum > nshots:
 				break
-			'''
-			if eventnum < 22800:
-				eventnum += 1
-				if eventnum%500<1: 
-					print(eventnum)
-				continue
-			'''
-
-			''' VLS specific section, do this first to slice only good shots '''
-			#print(vlswv.shape)
 			try:
 				vlswv = np.squeeze(vls.raw.value(evt))
-				baseline = vlswv[1900:]#/148.
+				vlswv = vlswv-int(np.mean(vlswv[1900:]))
+				if np.max(vlswv<300): 
+					if eventnum%50<1: 
+						print(eventnum)
+					eventnum += 1
+					continue
 			except:
 				print('skip per vls')
 				continue
 
-			thisl3 = ebeam.raw.ebeamL3Energy(evt)
-			if type(thisl3) == type(None):
+			try:
+				thisl3 = ebeam.raw.ebeamL3Energy(evt)
+				thisl3 += 0.5
+			except:
 				print('skip per l3')
 				continue
-			else:
-				thisl3 += 0.5
-			bs = np.mean(baseline)
-			vlswv = vlswv-int(bs)
-			num = np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))]))
-			den = np.sum(vlswv)
-			if type(den) == type(None):
-				print('skip per vlswv')
-				continue
-			if den<5000: 
-				if eventnum%50<1: 
-					print(eventnum)
-				eventnum += 1
-				continue
 
-			if init:
-				v = [vlswv.astype(np.int16)]
-				vc = [np.uint16(num/den)]
-				vs = [np.uint64(den)]
-				l3 = [np.uint16(thisl3)]
-			else:
-				v += [vlswv.astype(np.int16)]
-				vc += [np.uint16(num/den)]
-				vs += [np.uint64(den)]
-				l3 += [np.uint16(thisl3)]
 
+			''' Ebeam specific section '''
+			l3 = processEbeam(thisl3,l3,initState=init)	
+
+			''' VLS specific section, do this first to slice only good shots '''
+
+			v,vc,vs,vsize = processVls(vlswv,v,vc,vs,vsize,initState=init)
 
 			''' HSD-Abaco section '''
-			sz = hsd.raw.waveforms(evt)[ chans[0] ][0].shape[0]
-
-			for key in chans:
+			for key in chans.keys():
 				# hard coding the scale inflation for accounting the 4 different ADC offsets.
 
-                                # wrap in callable method from here to...
-                                # inputs would be int16 waveform, and the inflation factor also include the scaling by 4 to use 14 bits depth instead of only 12
+				# wrap in callable method from here to...
+				# inputs would be int16 waveform, and the inflation factor also include the scaling by 4 to use 14 bits depth instead of only 12
 				s = 4*np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
 
-				if type(s) == type(None):
-					e = []
-					ne = 0
-				else:
-					nadcs = 4
-					for adc in range(nadcs):
-						base = np.mean(s[adc:baselim:nadcs])
-						s[adc::4] -= np.int16(base) # this now needs to be a signed int
-					wave = np.append(s,np.flip(s,axis=0))
-					WAVE = dct(wave)
-					WAVE = rollon(WAVE,10)
-					WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0]))
-					DWAVE = np.copy(WAVE)
-					DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0]
-					logic = idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
-					e,ne = scanedges(logic,logicthresh[key],inflate) # logic waveform in and edges out
-                                        # to here 
-				if init: 
-					tofs[key] = [0] # setting the 0'th address of tofs[key] to catch all addresses for nedges == 0 case
-					if ne<1:
-						addresses[key] = [int(0)]
-						nedges[key] = [int(0)]
-						tofs[key] += [] 
-					else:
-						addresses[key] = [int(1)] 
-						nedges[key] = [int(ne)]
-						tofs[key] += e
-				else:
-					if ne<1:
-						addresses[key] += [int(0)]
-						nedges[key] += [int(0)]
-					else:
-						addresses[key] += [int(len(tofs[key]))] 
-						nedges[key] += [int(ne)]
-						tofs[key] += e
-
+				tofs,nedges,addresses = processPort(key,s,tofs,nedges,addresses,initState=init)
 
 			if init and len(v)>0: init = False
 
@@ -217,16 +224,26 @@ def main():
 				print(eventnum)
 			eventnum += 1
 
-		f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') #HERE HERE HERE HERE HERE
+		f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') 
                 # use f.create_group('port_%i'%i,portnum)
-		for key in chans:
-			f.create_dataset('port_%i_tofs'%(key),data=tofs[key],dtype=np.uint32) # python int = int64
-			f.create_dataset('port_%i_addresses'%(key),data=addresses[key],dtype=np.uint64)
-			f.create_dataset('port_%i_nedges'%(key),data=nedges[key],dtype=np.uint16)
-		f.create_dataset('vls',data=v,dtype=np.int16)
-		f.create_dataset('vls_centroids',data=vc,dtype=np.int16)
-		f.create_dataset('vls_sum',data=vs,dtype=np.uint64)
-		f.create_dataset('l3energy',data=l3,dtype=np.uint16)
+		#_ = [print(key,chans[key]) for key in chans.keys()]
+		print(chans.keys(),tofs.keys())
+		for key in chans.keys():
+			g = f.create_group('port_%i'%(key))
+			g.create_dataset('tofs',data=tofs[key],dtype=np.uint32) 
+			g.create_dataset('addresses',data=addresses[key],dtype=np.uint64)
+			g.create_dataset('nedges',data=nedges[key],dtype=np.uint16)
+			g.attrs.create('inflate',data=inflate,dtype=np.uint8)
+			g.attrs.create('t0',data=t0s[key]*inflate,dtype=np.uint8)
+			g.attrs.create('hsd',data=chans[key],dtype=np.uint8)
+			g.attrs.create('size',data=sz[key]*inflate,dtype=np.uint8)
+		grpvls = f.create_group('vls')
+		grpvls.create_dataset('data',data=v,dtype=np.int16)
+		grpvls.create_dataset('centroids',data=vc,dtype=np.int16)
+		grpvls.create_dataset('sum',data=vs,dtype=np.uint64)
+		grpvls.attrs.create('size',data=vsize,dtype=np.int32)
+		grpebeam = f.create_group('ebeam')
+		grpebeam.create_dataset('l3energy',data=l3,dtype=np.uint16)
 		f.close()
 
 	print("Hello, I'm done now!")
