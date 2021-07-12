@@ -34,29 +34,59 @@ def mypoly(x,order=4):
 		result[:,p] = np.power(result[:,1],int(p))
 	return result
 
-def processEbeam(thisl3,l3,initState):
-	if initState:
-		l3 = [np.uint16(thisl3)]
-	else:
-		l3 += [np.uint16(thisl3)]
-	return l3
+###########################################
+########### Class definitions #############
+###########################################
 
-def processVls(evt,vls,vlswv,v,vc,vs,vsize,initState):
-	num = np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))]))
-	den = np.sum(vlswv)
-
-	if initState:
-		v = [vlswv.astype(np.int16)]
-		vsize = len(v)
-		vc = [np.uint16(num/den)]
-		vs = [np.uint64(den)]
-	else:
-		v += [vlswv.astype(np.int16)]
-		vc += [np.uint16(num/den)]
-		vs += [np.uint64(den)]
-	return v,vc,vs,vsize
+class Ebeam:
+	def __init__(self):
+		self.l3 = []
+		self.initState = True
+		return 
+	def process(self,l3in):
+		if self.initState:
+			self.l3 = [l3in]
+		else:
+			self.l3 += [np.uint16(l3in)]
+		return self
+	def set_initState(self,state):
+		self.initState = state
+		return self
 
 
+class Vls:
+	def __init__(self):
+		self.v = []
+		self.vsize = int(0)
+		self.vc = []
+		self.vs = []
+		self.initState = True
+		return
+
+	def process(self, vlswv):
+		#print("processing vls",vlswv.shape[0])
+		num = np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))]))
+		den = np.sum(vlswv)
+		if self.initState:
+			self.v = [vlswv.astype(np.int16)]
+			self.vsize = len(self.v)
+			self.vc = [np.uint16(num/den)]
+			self.vs = [np.uint64(den)]
+		else:
+			self.v += [vlswv.astype(np.int16)]
+			self.vc += [np.uint16(num/den)]
+			self.vs += [np.uint64(den)]
+		return self
+
+	def set_initState(self,state):
+		self.initState = state
+		return self
+
+	def print_v(self):
+		print(self.v[:10])
+		return self
+
+	
 def dctLogic(s,inflate=4):
 	sz = s.shape[0]
 	wave = np.append(s,np.flip(s,axis=0))
@@ -94,42 +124,73 @@ def scanedges(d,minthresh):
 		for j in range(newtloops): # 3 rounds of Newton-Raphson
 			X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 			x0 -= theta.dot(X0)/theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]) # this seems like maybe it should be wrong
-		tofs += [start + x0]
+		tofs += [np.uint32(start + x0)]
 	return tofs,len(tofs)
 
-def processPort(key,s,tofs,nedges,addresses,initState):
+class Port:
+		# Note that t0s are aligned with 'prompt' in the digitizer logic signal
+		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
+		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-	if type(s) == type(None):
-		e = []
-		ne = 0
-	else:
-		nadcs = 4
-		for adc in range(nadcs):
-			base = np.mean(s[adc:baselim:nadcs])
-			s[adc::4] -= np.int16(base) # this now needs to be a signed int
-		logic = dctLogic(s,inflate)
-		e,ne = scanedges(logic,logicthresh[key]) # logic waveform in and edges out
-	if initState: 
-		sz[key] = s.shape[0]
-		tofs[key] = [0] # setting the 0'th address of tofs[key] to catch all addresses for nedges == 0 case
-		if ne<1:
-			addresses[key] = [int(0)]
-			nedges[key] = [int(0)]
-			tofs[key] += [] 
-		else:
-			addresses[key] = [int(1)] 
-			nedges[key] = [int(ne)]
-			tofs[key] += e
-	else:
-		if ne<1:
-			addresses[key] += [int(0)]
-			nedges[key] += [int(0)]
-		else:
-			addresses[key] += [int(len(tofs[key]))] 
-			nedges[key] += [int(ne)]
-			tofs[key] += e
-	return tofs,nedges,addresses
+	def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-8000,scale=4,inflate=4):
+		self.portnum = portnum
+		self.hsd = hsd
+		self.t0 = t0
+		self.nadcs = nadcs
+		self.baselim = baselim
+		self.logicthresh = logicthresh
+		self.initState = True
+		self.scale = scale
+		self.inflate = inflate
+		self.sz = 0
+		self.tofs = []
+		self.addresses = []
+		self.nedges = []
+		self.waves = {}
+		self.shot = int(0)
 
+	def process(self,s):
+		if type(s) == type(None):
+			e = []
+			ne = 0
+		else:
+			s *= self.scale
+			#print(s[:10])
+			for adc in range(self.nadcs):
+				b = np.mean(s[adc:self.baselim:self.nadcs])
+				s[adc::self.nadcs] -= np.int16(b)
+			logic = dctLogic(s,self.inflate)
+			e,ne = scanedges(logic,self.logicthresh)
+		self.waves.update({self.shot:logic})
+		if self.initState:
+			self.sz = s.shape[0]*self.inflate
+			self.tofs = [0]
+			if ne<1:
+				self.addresses = [int(0)]
+				self.nedges = [int(0)]
+				self.tofs += []
+			else:
+				self.addresses = [int(1)]
+				self.nedges = [int(ne)]
+				self.tofs += e
+		else:
+			if ne<1:
+				self.addresses += [int(0)]
+				self.nedges += [int(0)]
+				self.tofs += []
+			else:
+				self.addresses += [int(len(this.tofs))]
+				self.nedges += [int(ne)]
+				self.tofs += e
+		return self
+
+	def set_initState(self,state=True):
+		self.initState = state
+		return self
+
+	def print_tofs(self):
+		print(self.tofs)
+		return self
 
 def main():
 	scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
@@ -145,10 +206,22 @@ def main():
 
 	print('starting analysis exp %s for run %i'%(expname,int(runnum)))
 
+	chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number
+	t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096}
+	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
+
+	spect = Vls()
+	ebunch = Ebeam()
+	port = {} 
+	for key in chans.keys():
+		port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=4)
+
 	ds = psana.DataSource(exp=expname,run=runnum)
 
-	for run in ds.runs():
+	#for run in ds.runs():
+	run = next(ds.runs())
 		#np.savetxt('%s/waveforms.%s.%i.%i.dat'%(scratchdir,expname,runnum,key),wv[key],fmt='%i',header=headstring)
+	for i in range(1):
 		print(run.detnames)
 		eventnum = 0
 		runhsd=True
@@ -162,63 +235,53 @@ def main():
 		vc = []
 		vs = []
 		l3 = []
-		tofs = {}
-		addresses = {}
-		nedges = {}
-		sz = {}
-		# Note that t0s are aligned with 'prompt' in the digitizer logic signal
-		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
-		chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number
-		t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096}
-		logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
-		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
 
-		init = True
+		init = True 
 		vsize = 0
-		inflate = 4
-		baselim = 1000 
+
 		for evt in run.events():
 			if eventnum > nshots:
 				break
+
+			''' VLS specific section, do this first to slice only good shots '''
 			try:
 				vlswv = np.squeeze(vls.raw.value(evt))
 				vlswv = vlswv-int(np.mean(vlswv[1900:]))
-				if np.max(vlswv<300): 
-					if eventnum%50<1: 
-						print(eventnum)
+				if np.max(vlswv)<300: 
+					print(eventnum,'skip per weak vls')
 					eventnum += 1
 					continue
+				spect.process(vlswv)
+				#spect.print_v()
+
 			except:
-				print('skip per vls')
+				print(eventnum,'skip per vls')
+				eventnum += 1
 				continue
 
+			''' Ebeam specific section '''
 			try:
 				thisl3 = ebeam.raw.ebeamL3Energy(evt)
 				thisl3 += 0.5
+				ebunch.process(thisl3)
 			except:
-				print('skip per l3')
+				print(eventnum,'skip per l3')
+				eventnum += 1
 				continue
 
 
-			''' Ebeam specific section '''
-			l3 = processEbeam(thisl3,l3,initState=init)	
-
-			''' VLS specific section, do this first to slice only good shots '''
-
-			v,vc,vs,vsize = processVls(vlswv,v,vc,vs,vsize,initState=init)
-
 			''' HSD-Abaco section '''
 			for key in chans.keys():
-				# hard coding the scale inflation for accounting the 4 different ADC offsets.
+				s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+				port[key].process(s)
 
-				# wrap in callable method from here to...
-				# inputs would be int16 waveform, and the inflation factor also include the scaling by 4 to use 14 bits depth instead of only 12
-				s = 4*np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-
-				tofs,nedges,addresses = processPort(key,s,tofs,nedges,addresses,initState=init)
-
-			if init and len(v)>0: init = False
+			if init and len(v)>0: 
+				init = False
+				ebunch.set_initState(False)
+				spect.set_initState(False)
+				for key in chans.keys():
+					port[key].set_initState(False)
 
 			if eventnum%50==0: 
 				print(eventnum)
@@ -227,16 +290,15 @@ def main():
 		f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') 
                 # use f.create_group('port_%i'%i,portnum)
 		#_ = [print(key,chans[key]) for key in chans.keys()]
-		print(chans.keys(),tofs.keys())
 		for key in chans.keys():
 			g = f.create_group('port_%i'%(key))
-			g.create_dataset('tofs',data=tofs[key],dtype=np.uint32) 
-			g.create_dataset('addresses',data=addresses[key],dtype=np.uint64)
-			g.create_dataset('nedges',data=nedges[key],dtype=np.uint16)
-			g.attrs.create('inflate',data=inflate,dtype=np.uint8)
-			g.attrs.create('t0',data=t0s[key]*inflate,dtype=np.uint8)
-			g.attrs.create('hsd',data=chans[key],dtype=np.uint8)
-			g.attrs.create('size',data=sz[key]*inflate,dtype=np.uint8)
+			g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint32) 
+			g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
+			g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
+			g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
+			g.attrs.create('t0',data=port[key].t0*port[key].inflate,dtype=np.uint8)
+			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
+			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint8)
 		grpvls = f.create_group('vls')
 		grpvls.create_dataset('data',data=v,dtype=np.int16)
 		grpvls.create_dataset('centroids',data=vc,dtype=np.int16)
