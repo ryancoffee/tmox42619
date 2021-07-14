@@ -51,29 +51,47 @@ def fill2dhist(csum):
             h[i,k] += 1
     return h
 
-def processmultitofs(fnames,toft,tofv,tofd,vlsmean,portnum):
+def loadh5(fname):
+    data = {}
+    m = re.search('^(.+)/h5files/(.+).h5',fname)
+    if m:
+        fullname = m.group(0)
+        datadir = m.group(1)
+        filefront = m.group(2)
+        print('processing:\t%s'%fullname)
+    else:
+        return
+    with h5py.File('%s'%(fullname),'r') as f:
+        for key in f.keys():
+            if re.search('port',key):
+                data[key] = {}
+                for k in f[key].keys():
+                    data[key].update({k:np.squeeze(f[key][k][()])})
+            if re.search('vls',key):
+                data[key] = {}
+                for k in f[key].keys():
+                    data[key].update({k: np.squeeze(f[key][k][()])})
+    return data
+
+def processmultitofs(fnames,portnum):
+    vlsmean = np.array((None,),dtype=float)
+    tofv = [] # for vls spectrometer index
+    toft = [] # for time-of-flight index
+    tofd = [] # for counting
     for fname in fnames:
         data = {}
-        m = re.search('^(.+)/h5files/(.+).h5',fname)
-        if m:
-            fullname = m.group(0)
-            datadir = m.group(1)
-            filefront = m.group(2)
-            print('processing:\t%s'%fullname)
-        else:
-            return
-        with h5py.File('%s'%(fullname),'r') as f:
-            print(list(f.keys()))
-            for key in f.keys():
-                data[key] = np.squeeze(f[key][()])
+        data = loadh5(fname)
         # here now the data is stored in system memory and we close the h5 file
+        print(data.keys())
+        for key in data.keys():
+            print(key,data[key].keys())
 
-        if vlsmean.shape[0]<data['vls'].shape[1]:
-            vlsmean = np.mean(data['vls'],axis=0)
+        if vlsmean.shape[0]<data['vls']['data'].shape[1]:
+            vlsmean = np.mean(data['vls']['data'],axis=0)
         else:
-            vlsmean += np.mean(data['vls'],axis=0)
+            vlsmean += np.mean(data['vls']['data'],axis=0)
         vlswindow = (-100,100)
-        peaks = np.argmax(data['vls'],axis=1)
+        peaks = np.argmax(data['vls']['data'],axis=1)
         vlscsum = []
         vlsinds = []
         for i,p in enumerate(peaks):
@@ -84,14 +102,12 @@ def processmultitofs(fnames,toft,tofv,tofd,vlsmean,portnum):
             else:
             '''
             vlsinds.append([i for i in range( max(0,p+vlswindow[0]) , min(1900,p+vlswindow[1]) )])
-            vlscsum.append( np.cumsum( (data['vls'][i,vlsinds[-1]]   - np.max(data['vls'][i,:20])) ) )
+            vlscsum.append( np.cumsum( (data['vls']['data'][i,vlsinds[-1]]   - np.max(data['vls']['data'][i,:20])) ) )
 
-        tof = data['port_%i_tofs'%portnum]
-        tofaddresses = data['port_%i_addresses'%portnum]
-        tofnedges= data['port_%i_nedges'%portnum]
+        tof = data['port_%i'%portnum]['tofs']
+        tofaddresses = data['port_%i'%portnum]['addresses']
+        tofnedges= data['port_%i'%portnum]['nedges']
 
-        shotlist = []
-        toflist = []
 
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
@@ -123,12 +139,8 @@ def main():
         print('syntax: main h5file list')
         return
 
-    vlsmean = np.array((None,),dtype=float)
-    tofv = [] # for vls spectrometer index
-    toft = [] # for time-of-flight index
-    tofd = [] # for counting
 
-    toft,tofv,tofd,vlsmean = processmultitofs(fnames,toft,tofv,tofd,vlsmean,portnum)
+    toft,tofv,tofd,vlsmean = processmultitofs(fnames,portnum)
     tofhist_dok = coo_matrix((tofd,(toft,tofv)),shape=((2**16,vlsmean.shape[0])),dtype=np.uint16).tocsr().todok()
 
     histname = '%s/ascii/port_%i.hist.dat'%(datadir,portnum)
