@@ -161,7 +161,6 @@ class Port:
 				s[adc::self.nadcs] -= np.int16(b)
 			logic = dctLogic(s,self.inflate)
 			e,ne = scanedges(logic,self.logicthresh)
-		self.waves.update({self.shot:logic})
 		if self.initState:
 			self.sz = s.shape[0]*self.inflate
 			self.tofs = [0]
@@ -179,7 +178,7 @@ class Port:
 				self.nedges += [int(0)]
 				self.tofs += []
 			else:
-				self.addresses += [int(len(this.tofs))]
+				self.addresses += [int(len(self.tofs))]
 				self.nedges += [int(ne)]
 				self.tofs += e
 		return self
@@ -276,7 +275,7 @@ def main():
 				s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
 				port[key].process(s)
 
-			if init and len(v)>0: 
+			if init==True:
 				init = False
 				ebunch.set_initState(False)
 				spect.set_initState(False)
@@ -300,12 +299,12 @@ def main():
 			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
 			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint8)
 		grpvls = f.create_group('vls')
-		grpvls.create_dataset('data',data=v,dtype=np.int16)
-		grpvls.create_dataset('centroids',data=vc,dtype=np.int16)
-		grpvls.create_dataset('sum',data=vs,dtype=np.uint64)
-		grpvls.attrs.create('size',data=vsize,dtype=np.int32)
+		grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
+		grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
+		grpvls.create_dataset('sum',data=spect.vs,dtype=np.uint64)
+		grpvls.attrs.create('size',data=spect.vsize,dtype=np.int32)
 		grpebeam = f.create_group('ebeam')
-		grpebeam.create_dataset('l3energy',data=l3,dtype=np.uint16)
+		grpebeam.create_dataset('l3energy',data=ebunch.l3,dtype=np.uint16)
 		f.close()
 
 	print("Hello, I'm done now!")
