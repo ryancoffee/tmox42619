@@ -132,7 +132,7 @@ class Port:
 		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
 		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-	def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-8000,scale=4,inflate=4):
+	def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,scale=4,inflate=4):
 		self.portnum = portnum
 		self.hsd = hsd
 		self.t0 = t0
@@ -206,14 +206,20 @@ def main():
 	print('starting analysis exp %s for run %i'%(expname,int(runnum)))
 
 	chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number
-	t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096}
+	t0s = {0:24000,1:24000,2:24000,4:24000,5:24000,12:24000,13:25725,14:25000,15:24000,16:24000} ## these are in the tof units
+	#t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096} ## I believe these are in nanoseconds
 	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
 
 	spect = Vls()
 	ebunch = Ebeam()
 	port = {} 
+	scale = 4
+	inflate = 4
+	for key in logicthresh.keys():
+		logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
+
 	for key in chans.keys():
-		port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=4)
+		port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,scale=scale)
 
 	ds = psana.DataSource(exp=expname,run=runnum)
 
@@ -295,9 +301,10 @@ def main():
 			g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
 			g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
 			g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
-			g.attrs.create('t0',data=port[key].t0*port[key].inflate,dtype=np.uint8)
+			g.attrs.create('t0',data=port[key].t0,dtype=np.uint32)
+			#g.attrs.create('t0',data=port[key].t0*port[key].inflate,dtype=np.uint32)
 			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint8)
+			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint32)
 		grpvls = f.create_group('vls')
 		grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
 		grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
