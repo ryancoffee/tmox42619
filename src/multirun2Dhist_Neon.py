@@ -129,12 +129,12 @@ def processmultitofs_log(fnames,portnum):
                 if i%1000==0: print(i,t0['port_%i'%portnum],toflist)
                 for t in toflist:
                     if len(vlsinds[i])>150:
-                        print(vlscsum[i][-1])
-                        for j in samplePDF(vlsinds[i],vlscsum[i],16): ### choose a fresh random set of 16 for each hit
-                            if t>1 and t<(2**16-1):
-                                toflogt += [t]
-                                tofv += [j]
-                                tofd += [1]
+                        if vlscsum[i][-1]>15000: # quick by hand for Neon, pick only hot shots.
+                            for j in samplePDF(vlsinds[i],vlscsum[i],16): ### choose a fresh random set of 16 for each hit
+                                if t>1 and t<(2**16-1):
+                                    toflogt += [t]
+                                    tofv += [j]
+                                    tofd += [1]
     return toflogt,tofv,tofd,vlsmean
 
 
