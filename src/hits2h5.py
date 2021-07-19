@@ -99,6 +99,7 @@ def dctLogic(s,inflate=4):
 
 def scanedges(d,minthresh):
 	tofs = []
+	slopes = []
 	sz = d.shape[0]
 	newtloops = 3
 	order = 3
@@ -106,7 +107,7 @@ def scanedges(d,minthresh):
 	while i < sz-10:
 		while d[i] > minthresh:
 			i += 1
-			if i==sz-10: return tofs,len(tofs)
+			if i==sz-10: return tofs,slopes,len(tofs)
 		while i<sz-10 and d[i]<d[i-1]:
 			i += 1
 		start = i
@@ -125,7 +126,10 @@ def scanedges(d,minthresh):
 			X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 			x0 -= theta.dot(X0)/theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]) # this seems like maybe it should be wrong
 		tofs += [np.uint32(start + x0)]
-	return tofs,len(tofs)
+		X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
+		#slopes += [np.int32(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
+		slopes += [np.int64((theta[1]+x0*theta[2]))//2**20] ## scaling by 2**20 in order ti reign in the obscene derivatives... probably shoul;d be scaling d here instead
+	return tofs,slopes,len(tofs)
 
 class Port:
 		# Note that t0s are aligned with 'prompt' in the digitizer logic signal
@@ -144,6 +148,7 @@ class Port:
 		self.inflate = inflate
 		self.sz = 0
 		self.tofs = []
+		self.slopes = []
 		self.addresses = []
 		self.nedges = []
 		self.waves = {}
@@ -152,6 +157,7 @@ class Port:
 	def process(self,s):
 		if type(s) == type(None):
 			e = []
+			de = []
 			ne = 0
 		else:
 			s *= self.scale
@@ -160,7 +166,7 @@ class Port:
 				b = np.mean(s[adc:self.baselim:self.nadcs])
 				s[adc::self.nadcs] -= np.int16(b)
 			logic = dctLogic(s,self.inflate)
-			e,ne = scanedges(logic,self.logicthresh)
+			e,de,ne = scanedges(logic,self.logicthresh)
 		if self.initState:
 			self.sz = s.shape[0]*self.inflate
 			self.tofs = [0]
@@ -168,19 +174,23 @@ class Port:
 				self.addresses = [int(0)]
 				self.nedges = [int(0)]
 				self.tofs += []
+				self.slopes += []
 			else:
 				self.addresses = [int(1)]
 				self.nedges = [int(ne)]
 				self.tofs += e
+				self.slopes += de
 		else:
 			if ne<1:
 				self.addresses += [int(0)]
 				self.nedges += [int(0)]
 				self.tofs += []
+				self.slopes += []
 			else:
 				self.addresses += [int(len(self.tofs))]
 				self.nedges += [int(ne)]
 				self.tofs += e
+				self.slopes += de
 		return self
 
 	def set_initState(self,state=True):
@@ -189,6 +199,7 @@ class Port:
 
 	def print_tofs(self):
 		print(self.tofs)
+		print(self.slopes)
 		return self
 
 def main():
@@ -298,6 +309,7 @@ def main():
 		for key in chans.keys():
 			g = f.create_group('port_%i'%(key))
 			g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint32) 
+			g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
 			g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
 			g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
 			g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
