@@ -125,6 +125,7 @@ def processmultitofs_log(fnames,portnum):
 
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
+<<<<<<< HEAD
                 tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - t0['port_%i'%portnum]
                 tmpslope = tofslope[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ]
                 if len(tmpt)==len(tmpslope):
@@ -144,6 +145,19 @@ def processmultitofs_log(fnames,portnum):
                                         toflogt += [t]
                                         tofv += [j]
                                         tofd += [1]
+=======
+                tmp = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - t0['port_%i'%portnum]
+                toflist = ((np.array([np.log2(t) for t in tmp if t>5])-5)*2**8).astype(np.int16)
+                if i%1000==0: print(i,t0['port_%i'%portnum],toflist)
+                for t in toflist:
+                    if len(vlsinds[i])>150:
+                        if vlscsum[i][-1]>15000: # quick by hand for Neon, pick only hot shots.
+                            for j in samplePDF(vlsinds[i],vlscsum[i],16): ### choose a fresh random set of 16 for each hit
+                                if t>1 and t<(2**16-1):
+                                    toflogt += [t]
+                                    tofv += [j]
+                                    tofd += [1]
+>>>>>>> 091497bce4ef06778773d51fbc14f95104df6459
     return toflogt,tofv,tofd,vlsmean
 
 
