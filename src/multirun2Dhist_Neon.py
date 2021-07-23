@@ -117,6 +117,7 @@ def processmultitofs_log(fnames,portnum):
             vlscsum.append( np.cumsum( tmp ) )
 
         tof = data['port_%i'%portnum]['tofs']
+        tofslope = data['port_%i'%portnum]['slopes']
         #t0 = attrs['port_%i'%portnum]['t0']
         tofaddresses = data['port_%i'%portnum]['addresses']
         tofnedges= data['port_%i'%portnum]['nedges']
@@ -124,17 +125,25 @@ def processmultitofs_log(fnames,portnum):
 
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
-                tmp = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - t0['port_%i'%portnum]
-                toflist = ((np.array([np.log2(t) for t in tmp if t>5])-5)*2**8).astype(np.int16)
-                if i%1000==0: print(i,t0['port_%i'%portnum],toflist)
-                for t in toflist:
-                    if len(vlsinds[i])>150:
-                        print(vlscsum[i][-1])
-                        for j in samplePDF(vlsinds[i],vlscsum[i],16): ### choose a fresh random set of 16 for each hit
-                            if t>1 and t<(2**16-1):
-                                toflogt += [t]
-                                tofv += [j]
-                                tofd += [1]
+                tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - t0['port_%i'%portnum]
+                tmpslope = tofslope[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ]
+                if len(tmpt)==len(tmpslope):
+                    toflist = []
+                    slopelist = []
+                    for j in range(len(tmpt)):
+                        if tmpslope[j]>500: ## HERE HERE HERE HERE setting by hand
+                            toflist += [np.int16(tmpt[j])]
+                            slopelist += [np.int32(tmpslope[j])]
+                    if i%1000==0: 
+                        print(i,t0['port_%i'%portnum],toflist,slopelist)
+                    for t in toflist:
+                            if len(vlsinds[i])>150:
+                                #print(vlscsum[i][-1])
+                                for j in samplePDF(vlsinds[i],vlscsum[i],16): ### choose a fresh random set of 16 for each hit
+                                    if t>1 and t<(2**14-1):
+                                        toflogt += [t]
+                                        tofv += [j]
+                                        tofd += [1]
     return toflogt,tofv,tofd,vlsmean
 
 
