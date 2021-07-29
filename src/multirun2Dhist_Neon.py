@@ -137,7 +137,9 @@ def loadh5(fname):
     return data,attrs
 
 def processmultitofs_log(fnames,portnum):
-    t0 = {'port_0':26900,'port_1':24625,'port_2':25000,'port_4':23800,'port_5':24200,'port_12':24250,'port_13':24300,'port_14':24600,'port_15':26200,'port_16':25000}
+    t0 = {'port_0':27460,'port_1':25114,'port_2':24981,'port_4':24295,'port_5':24768,'port_12':24645,'port_13':24669,'port_14':25087,'port_15':26742,'port_16':24507}
+    slopethresh = {'port_0':500,'port_1':500,'port_2':300,'port_4':150,'port_5':500,'port_12':500,'port_13':500,'port_14':500,'port_15':500,'port_16':300}
+    vlsoffsetdict = {82:141,83:141,84:141,85:141,86:141,87:0,88:0,89:0,90:0,93:0,94:0,95:0}
     vlsmean = np.array((None,),dtype=float)
     tofv = [] # for vls spectrometer index
     toflogt = [] # for time-of-flight index
@@ -147,6 +149,11 @@ def processmultitofs_log(fnames,portnum):
         data = {}
         attrs = {}
         data,attrs = loadh5(fname)
+        m = re.search('run(\d+).h5$',fname)
+        vlsoffset = 0
+        if m:
+            vlsoffset = vlsoffsetdict[int(m.group(1))]
+
         # here now the data is stored in system memory and we close the h5 file
         print(data.keys())
         for key in data.keys():
@@ -182,7 +189,7 @@ def processmultitofs_log(fnames,portnum):
                     toflist = []
                     slopelist = []
                     for j in range(len(tmpt)):
-                        if tmpslope[j]>300: ## HERE HERE HERE HERE setting by hand
+                        if tmpslope[j]>slopethresh['port_%i'%portnum]: ## HERE HERE HERE HERE setting by hand
                             toflist += [np.int16(tmpt[j])]
                             slopelist += [np.int32(tmpslope[j])]
                     if i%1000==0: 
@@ -191,9 +198,10 @@ def processmultitofs_log(fnames,portnum):
                         #for j in samplePDF(vlsinds[i],vlscsum[i],len(toflist)): ### choose a fresh random set of 16 for each hit
                         for j in getcentroid(vlsinds[i],vlsspec[i]): 
                             for t in toflist:
-                                if t>1 and t<(2**14-1):
-                                    toflogt += [t]
-                                    tofv += [j]
+                                if t>1 and t<(2**15-1):
+                                    toflogt += [np.log2(t)/16.0*2**12] ### SCALING HERE ###
+                                    #toflogt += [t]
+                                    tofv += [j+vlsoffset]
                                     tofd += [1]
                                     ncor += 1
     return toflogt,tofv,tofd,vlsmean,ncor
@@ -221,25 +229,28 @@ def main():
     tofhist_csr = coo_matrix((tofd,(toft,tofv)),shape=((2**14,vlsmean.shape[0])),dtype=np.uint16).tocsr()
 
     histname = '%s/ascii/port_%i.hist.dat'%(datadir,portnum)
-    outername = '%s/ascii/port_%i.outer.dat'%(datadir,portnum)
-    diffname = '%s/ascii/port_%i.diff.dat'%(datadir,portnum)
+    tofname = '%s/ascii/port_%i.tof.dat'%(datadir,portnum)
+    #outername = '%s/ascii/port_%i.outer.dat'%(datadir,portnum)
+    #diffname = '%s/ascii/port_%i.diff.dat'%(datadir,portnum)
     dokname = '%s/ascii/port_%i.dok.dat'%(datadir,portnum)
     vlsname = '%s/ascii/port_%i.vls.dat'%(datadir,portnum)
 
     np.savetxt(vlsname,vlsmean,fmt='%.2f')
-    np.savetxt(histname,tofhist_csr.toarray(),fmt='%i')
+    h= tofhist_csr.toarray()[2000:4000,:] # this index selection is a function of the scaling at ### SCALING HERE ###
+    np.savetxt(histname,h,fmt='%i')
+    np.savetxt(tofname,np.sum(h,axis=1),fmt='%i')
     f = open(dokname,'w')
     tofhist_dok = tofhist_csr.todok()
     for key in tofhist_dok.keys():
         print('%i\t%i\t%i'%(key[0],key[1],tofhist_dok[key] ),file=f)
     f.close()
-    h = tofhist_csr.toarray().astype(float)
-    a = np.sum(h,axis=0)
-    b = np.sum(h,axis=1) 
-    c = np.outer(b,a)/ncor
-    np.savetxt(outername,c,fmt='%.6f')
-    np.savetxt(diffname,h-c,fmt='%.4f')
-    print(np.max(h-c))
+    #h = tofhist_csr.toarray().astype(float)
+    #a = np.sum(h,axis=0)
+    #b = np.sum(h,axis=1) 
+    #c = np.outer(b,a)/ncor
+    #np.savetxt(outername,c,fmt='%.6f')
+    #np.savetxt(diffname,h-c,fmt='%.4f')
+    #print(np.max(h-c))
     return
 
 

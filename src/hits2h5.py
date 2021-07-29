@@ -136,13 +136,14 @@ class Port:
 		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
 		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-	def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,scale=4,inflate=4):
+	def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,slopethresh=500,scale=4,inflate=4):
 		self.portnum = portnum
 		self.hsd = hsd
 		self.t0 = t0
 		self.nadcs = nadcs
 		self.baselim = baselim
 		self.logicthresh = logicthresh
+		self.slopethresh = slopethresh
 		self.initState = True
 		self.scale = scale
 		self.inflate = inflate
@@ -220,6 +221,8 @@ def main():
 	t0s = {0:24000,1:24000,2:24000,4:24000,5:24000,12:24000,13:25725,14:25000,15:24000,16:24000} ## these are in the tof units
 	#t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096} ## I believe these are in nanoseconds
 	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
+        t0s = {0:27460,1:25114,2:24981,4:24295,5:24768,12:24645,13:24669,14:25087,15:26742,16:24507}
+        slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
 
 	spect = Vls()
 	ebunch = Ebeam()
@@ -230,7 +233,7 @@ def main():
 		logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
 	for key in chans.keys():
-		port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,scale=scale)
+		port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],slopethresh=slopethresh[key],inflate=inflate,scale=scale)
 
 	ds = psana.DataSource(exp=expname,run=runnum)
 
@@ -314,7 +317,7 @@ def main():
 			g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
 			g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
 			g.attrs.create('t0',data=port[key].t0,dtype=np.uint32)
-			#g.attrs.create('t0',data=port[key].t0*port[key].inflate,dtype=np.uint32)
+			g.attrs.create('slopethresh',data=port[key].slopthresh,dtype=np.uint16)
 			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
 			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint32)
 		grpvls = f.create_group('vls')
