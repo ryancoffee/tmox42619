@@ -3,6 +3,26 @@ x0 = 6.7
 calib(x) = a*(x-x0)**3+b*(x-x0)**2+c*(x-x0)+d
 
 Port 0: this one has no photolines, only the valence photos, so only allowing d to vary
+OK, walked in Port 0 using coeffs c and d only using a starting point of port 5 fit values.
+Final set of parameters            Asymptotic Standard Error
+=======================            ==========================
+c               = -4.09146         +/- 0.005551     (0.1357%)
+d               = 4.90616          +/- 0.003069     (0.06256%)
+
+correlation matrix of the fit parameters:
+                c      d      
+c               1.000 
+d               0.937  1.000 
+gnuplot> rep
+gnuplot> print(a,b)
+-0.467449350575548
+gnuplot> print(a);print(b)
+1.74798143807442
+-0.467449350575548
+gnuplot> 
+
+
+
 a = b = 0
 Final set of parameters            Asymptotic Standard Error
 =======================            ==========================

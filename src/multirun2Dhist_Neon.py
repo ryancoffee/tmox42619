@@ -7,6 +7,12 @@ from scipy.interpolate import interp1d
 from scipy.sparse import coo_matrix,csr_matrix
 import re
 
+def logt2e(lt,coeffs,x0):
+    if lt<1.:
+        return 0.
+    x = np.array([(np.log(float(lt))-x0)**i for i in range(4)])
+    return np.exp(x.dot(coeffs))
+
 def getcentroid(inds,spec):
     x = inds
     y = spec 
@@ -74,9 +80,7 @@ def processmultitofs(fnames,portnum):
                                 tofv += [j]
                                 tofd += [1]
     return toft,tofv,tofd,vlsmean
-'''
 
-'''
 def samplePDFmat(inds,csum,nsamples = 16):
     b = []
     x = csum
@@ -136,15 +140,25 @@ def loadh5(fname):
                     data[key].update({k: np.squeeze(f[key][k][()])})
     return data,attrs
 
-def processmultitofs_log(fnames,portnum):
+def processmultitofs_log(fnames,calibfname,portnum):
     t0 = {'port_0':27460,'port_1':25114,'port_2':24981,'port_4':24295,'port_5':24768,'port_12':24645,'port_13':24669,'port_14':25087,'port_15':26742,'port_16':24507}
     slopethresh = {'port_0':500,'port_1':500,'port_2':300,'port_4':150,'port_5':500,'port_12':500,'port_13':500,'port_14':500,'port_15':500,'port_16':300}
     vlsoffsetdict = {82:141,83:141,84:141,85:141,86:141,87:0,88:0,89:0,90:0,93:0,94:0,95:0}
     vlsmean = np.array((None,),dtype=float)
     tofv = [] # for vls spectrometer index
     toflogt = [] # for time-of-flight index
+    en = []
     tofd = [] # for counting
     ncor = 0
+
+    ########## setting up for energy calibration ##############
+    lt2e_coeffs = [5. ,-4., -0.5, 1.5] 
+    x0 = 6.7
+    with h5py.File(calibfname,'r') as lt2ecalib:
+        lt2e_coeffs = lt2ecalib['port_%i'%portnum]['lt2e_coeffs'][()]
+        x0 = lt2ecalib['x0'][()]
+    ##########################################################
+
     for fname in fnames:
         data = {}
         attrs = {}
@@ -170,7 +184,7 @@ def processmultitofs_log(fnames,portnum):
         vlsinds = []
         for i,p in enumerate(peaks):
             vlsinds.append([i for i in range( max(0,1024+p+vlswindow[0]) , min(1900,1024+p+vlswindow[1]) )])
-            tmp = data['vls']['data'][i,vlsinds[-1]]   - np.max(data['vls']['data'][i,1024:1044]) ## restricting to high indices for sake of capturing only 3rd order (4th order near pixel 100)
+            tmp = data['vls']['data'][i,vlsinds[-1]] - np.max(data['vls']['data'][i,1024:1044]) ## restricting to high indices for sake of capturing only 3rd order (4th order near pixel 100)
             tmp *= (tmp>0)
             vlscsum.append( np.cumsum( tmp ) )
             vlsspec.append( tmp )
@@ -199,12 +213,21 @@ def processmultitofs_log(fnames,portnum):
                         for j in getcentroid(vlsinds[i],vlsspec[i]): 
                             for t in toflist:
                                 if t>1 and t<(2**15-1):
-                                    toflogt += [np.log2(t)/16.0*2**12] ### SCALING HERE ###
+                                    tmp = np.log2(t)/16.0*2**12 ### SCALING HERE ###
+                                    toflogt += [tmp] 
+                                    if tmp>2001:
+                                        tmpen = 0.5*logt2e(tmp-2000,lt2e_coeffs,x0) ### SCALING HERE ###
+                                        if tmpen<2**14:
+                                            en += [int(tmpen)]
+                                        else:
+                                            en += [int(0)]
+                                    else:
+                                        en += [int(0)]
                                     #toflogt += [t]
                                     tofv += [j+vlsoffset]
                                     tofd += [1]
                                     ncor += 1
-    return toflogt,tofv,tofd,vlsmean,ncor
+    return toflogt,tofv,tofd,en,vlsmean,ncor
 
 
 def main():
@@ -215,42 +238,39 @@ def main():
     fnames = list(sys.argv[2:])
     fullname = sys.argv[2]
     datadir = './'
+    calibfname = 'calib/Neon_lt2e.h5'
     filefront = 'hits.h5'
 
     m = re.search('^(.+)/h5files/(.+).h5',fnames[0])
     if m:
         datadir = m.group(1)
+        calibfname = '%s/calib/Neon_lt2e.h5'%(m.group(1))
     else:
         print('syntax: main h5file list')
         return
 
 
-    toft,tofv,tofd,vlsmean,ncor = processmultitofs_log(fnames,portnum)
+    toft,tofv,tofd,en,vlsmean,ncor = processmultitofs_log(fnames,calibfname,portnum)
     tofhist_csr = coo_matrix((tofd,(toft,tofv)),shape=((2**14,vlsmean.shape[0])),dtype=np.uint16).tocsr()
+    enhist_csr = coo_matrix((tofd,(en,tofv)),shape=((2**14,vlsmean.shape[0])),dtype=np.uint16).tocsr()
 
-    histname = '%s/ascii/port_%i.hist.dat'%(datadir,portnum)
-    tofname = '%s/ascii/port_%i.tof.dat'%(datadir,portnum)
-    #outername = '%s/ascii/port_%i.outer.dat'%(datadir,portnum)
-    #diffname = '%s/ascii/port_%i.diff.dat'%(datadir,portnum)
-    dokname = '%s/ascii/port_%i.dok.dat'%(datadir,portnum)
-    vlsname = '%s/ascii/port_%i.vls.dat'%(datadir,portnum)
+    histname = '%s/ascii/Neon_port_%i.hist.dat'%(datadir,portnum)
+    enhistname = '%s/ascii/Neon_port_%i.enhist_high.dat'%(datadir,portnum)
+    tofname = '%s/ascii/Neon_port_%i.tof.dat'%(datadir,portnum)
+    dokname = '%s/ascii/Neon_port_%i.dok.dat'%(datadir,portnum)
+    vlsname = '%s/ascii/Neon_port_%i.vls.dat'%(datadir,portnum)
 
     np.savetxt(vlsname,vlsmean,fmt='%.2f')
-    h= tofhist_csr.toarray()[2000:4000,:] # this index selection is a function of the scaling at ### SCALING HERE ###
+    h= tofhist_csr.toarray()[2000:4000,1024:] # this index selection is a function of the scaling at ### SCALING HERE ###
     np.savetxt(histname,h,fmt='%i')
     np.savetxt(tofname,np.sum(h,axis=1),fmt='%i')
+    e= enhist_csr.toarray()[:4000,1024:]
+    np.savetxt(enhistname,e,fmt='%i')
     f = open(dokname,'w')
     tofhist_dok = tofhist_csr.todok()
     for key in tofhist_dok.keys():
         print('%i\t%i\t%i'%(key[0],key[1],tofhist_dok[key] ),file=f)
     f.close()
-    #h = tofhist_csr.toarray().astype(float)
-    #a = np.sum(h,axis=0)
-    #b = np.sum(h,axis=1) 
-    #c = np.outer(b,a)/ncor
-    #np.savetxt(outername,c,fmt='%.6f')
-    #np.savetxt(diffname,h-c,fmt='%.4f')
-    #print(np.max(h-c))
     return
 
 
