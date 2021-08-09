@@ -67,7 +67,7 @@ def processmultitofs_log(fnames,calibfname,portnum):
     # from Neon runs 80s-90s 
     # t0 = {'port_0':27460,'port_1':25114,'port_2':24981,'port_4':24295,'port_5':24768,'port_12':24645,'port_13':24669,'port_14':25087,'port_15':26742,'port_16':24507}
     ### Argon runs 7-17 t0s
-    t0 = {'port_0':27920,'port_1':25570,'port_2':24900,'port_4':24750,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27200,'port_16':24000}
+    t0 = {'port_0':27913,'port_1':25570,'port_2':24900,'port_4':24752,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27198,'port_16':24000}
     slopethresh = {'port_0':500,'port_1':500,'port_2':300,'port_4':150,'port_5':500,'port_12':500,'port_13':500,'port_14':500,'port_15':500,'port_16':300}
     vlsoffsetdict = {82:141,83:141,84:141,85:141,86:141,87:0,88:0,89:0,90:0,93:0,94:0,95:0}
     vlsoffsetdict.update({7:0,8:50,9:100,10:150,11:175,12:225,13:250,14:275,15:300,16:325,17:125})
