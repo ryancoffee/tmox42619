@@ -1,0 +1,16 @@
+Good resolution even for 800eV electrons.
+- Detector side amplification allowed us to run below conventional MCP bias and therefore had sharper peaks.
+- Sub-sampling logic allows for higher resolution of electron hits
+- 2eV resolution at Neon 800eV (400 resolving power, e.g. 0.25eV @ 100eV) valence photoionization implies sufficient resolution for XLEAP "spooktroscopy" even without retardation.
+- Almost identify the splitting between Nc and Nt at the Nitrogen 2s ionizaiton... excellent for correlated electron dynamics Post Collision interaction (PCI) physics
+- Example of this is the Neon Rydberg features, but they are too narrow to "time" with attostreaking.
+- The Rydberg features also show we have solved the magnetic field problems with the mu metal, very good resolution at the lowest electron energies with equal collection efficiency means no magnetic steering.
+- Used this data to motivate a Run20 inhouse proposal for multi-photon spectroscopy based on Alberto's stochastic fields and Jan Michael Rost's ML with Synthetic Hamiltonian training
+
+Neon photos all the way down to threshold 
+- indicates that there is no systematic errors due to magnetic deflection, 
+- picture perfect partial wave agreement from 50eV to 0eV has never been seen in DESY CookieBox design (using Helmholz coils)
+- Secondaries upstream of drift tube have expected rolloff between few-10eV and the "haze" of electrons that is proportional to fast electron rate is consistent with secondary generation along the drift tube
+
+Mutiresolution mode
+- Used rich spectra of Argon and N2O in order to show multi-resolution mode (interleaved)
