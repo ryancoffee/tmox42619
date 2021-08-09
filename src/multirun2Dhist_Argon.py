@@ -35,84 +35,6 @@ def samplePDF(inds,csum,nsamples = 16):
     f = interp1d(xx,yy)
     xnew = np.random.random((nsamples,))*(xx[-2]-xx[1]) + xx[1]
     return list(f(xnew).astype(np.uint16))
-'''
-def processmultitofs(fnames,portnum):
-    vlsmean = np.array((None,),dtype=float)
-    tofv = [] # for vls spectrometer index
-    toft = [] # for time-of-flight index
-    tofd = [] # for counting
-    for fname in fnames:
-        data = {}
-        data = loadh5(fname)
-        # here now the data is stored in system memory and we close the h5 file
-        print(data.keys())
-        for key in data.keys():
-            print(key,data[key].keys())
-
-        if vlsmean.shape[0]<data['vls']['data'].shape[1]:
-            vlsmean = np.mean(data['vls']['data'],axis=0)
-        else:
-            vlsmean += np.mean(data['vls']['data'],axis=0)
-        vlswindow = (-100,100)
-        peaks = np.argmax(data['vls']['data'][:,1024:],axis=1)
-        vlscsum = []
-        vlsinds = []
-        for i,p in enumerate(peaks):
-            vlsinds.append([i for i in range( max(0,1024+p+vlswindow[0]) , min(1900,1024+p+vlswindow[1]) )])
-            tmp = data['vls']['data'][i,vlsinds[-1]]   - np.max(data['vls']['data'][i,1024:1044])
-            tmp *= (tmp>0)
-            vlscsum.append( np.cumsum( tmp ) )
-
-        tof = data['port_%i'%portnum]['tofs']
-        tofaddresses = data['port_%i'%portnum]['addresses']
-        tofnedges= data['port_%i'%portnum]['nedges']
-
-
-        for i in range(len(tofnedges)):
-            if tofnedges[i] > 0:
-                toflist = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ].astype(np.uint32)
-                if i%1000==0: print(i,toflist)
-                for t in toflist:
-                    if len(vlsinds[i])>150:
-                        for j in samplePDF(vlsinds[i],vlscsum[i],16): ### choose a fresh random set of 16 for each hit
-                            if t<(2**16-1):
-                                toft += [t]
-                                tofv += [j]
-                                tofd += [1]
-    return toft,tofv,tofd,vlsmean
-
-def samplePDFmat(inds,csum,nsamples = 16):
-    b = []
-    x = csum
-    y = inds
-    for i in range(x.shape[0]):
-        cs = {}
-        for j in range(x.shape[1]):
-            cs.update({x[i,j]:y[j]})
-        if len(cs.keys())<50:
-            b.append(np.zeros((nsamples,),dtype=np.uint16))
-        f = interp1d(xx,yy)
-        xnew = np.random.random((nsamples,))*(xx[-2]-xx[1]) + xx[1]
-        b.append(f(xnew).astype(np.uint16))
-    return b
-
-def fill2dhist(csum):
-    x = csum
-    y = np.arange(x.shape[1],dtype=np.uint8) 
-    h = np.zeros(x.shape,dtype=np.int8)
-    for i in range(x.shape[0]):
-        cs = {}
-        for j in range(x.shape[1]):
-            cs.update({x[i,j]:y[j]})
-        xx = [v for v in cs.keys()]
-        yy = [v for v in cs.values()]
-        f = interp1d(xx,yy)
-        xnew = np.random.random((100,))*(xx[-2]-xx[1]) + xx[1]
-        ynew = f(xnew).astype(np.uint16)
-        for k in ynew:
-            h[i,k] += 1
-    return h
-'''
 
 def loadh5(fname):
     data = {}
@@ -141,9 +63,16 @@ def loadh5(fname):
     return data,attrs
 
 def processmultitofs_log(fnames,calibfname,portnum):
-    t0 = {'port_0':27460,'port_1':25114,'port_2':24981,'port_4':24295,'port_5':24768,'port_12':24645,'port_13':24669,'port_14':25087,'port_15':26742,'port_16':24507}
+    ### eventually, use t0['Neon'] = {...} and then have a <sample> parameter that is either 'Neon', 'Argon', or 'NNO'
+    # from Neon runs 80s-90s 
+    # t0 = {'port_0':27460,'port_1':25114,'port_2':24981,'port_4':24295,'port_5':24768,'port_12':24645,'port_13':24669,'port_14':25087,'port_15':26742,'port_16':24507}
+    ### Argon runs 7-17 t0s
+    t0 = {'port_0':27920,'port_1':25570,'port_2':24900,'port_4':24750,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27200,'port_16':24000}
     slopethresh = {'port_0':500,'port_1':500,'port_2':300,'port_4':150,'port_5':500,'port_12':500,'port_13':500,'port_14':500,'port_15':500,'port_16':300}
     vlsoffsetdict = {82:141,83:141,84:141,85:141,86:141,87:0,88:0,89:0,90:0,93:0,94:0,95:0}
+    vlsoffsetdict.update({7:0,8:50,9:100,10:150,11:175,12:225,13:250,14:275,15:300,16:325,17:125})
+    vlsoffsetdict.update({21:0,22:0,23:25,26:0,27:0,28:0,29:0,30:0,31:0,36:0,39:0,40:0})
+    vlsoffsetdict.update({59:0,61:50,62:100,63:150,66:200,67:250,68:300,69:325,70:350,72:375,73:400,74:425})
     vlsmean = np.array((None,),dtype=float)
     tofv = [] # for vls spectrometer index
     toflogt = [] # for time-of-flight index
@@ -213,10 +142,10 @@ def processmultitofs_log(fnames,calibfname,portnum):
                         for j in getcentroid(vlsinds[i],vlsspec[i]): 
                             for t in toflist:
                                 if t>1 and t<(2**15-1):
-                                    tmp = np.log2(t)/16.0*2**12 ### SCALING HERE ###
+                                    tmp = np.log2(t)/16.0*2**14 ### SCALING HERE ###
                                     toflogt += [tmp] 
                                     if tmp>2001:
-                                        tmpen = .5*logt2e(tmp-2000.,lt2e_coeffs,x0) ### SCALING HERE ###
+                                        tmpen = logt2e(tmp-2000.,lt2e_coeffs,x0) ### SCALING HERE ###
                                         if tmpen<2**14:
                                             en += [int(tmpen)]
                                         else:
@@ -251,17 +180,23 @@ def main():
 
 
     toft,tofv,tofd,en,vlsmean,ncor = processmultitofs_log(fnames,calibfname,portnum)
-    tofhist_csr = coo_matrix((tofd,(toft,tofv)),shape=((2**14,vlsmean.shape[0])),dtype=np.uint16).tocsr()
-    enhist_csr = coo_matrix((tofd,(en,tofv)),shape=((2**14,vlsmean.shape[0])),dtype=np.uint16).tocsr()
+    '''
+    ## HERE HERE HERE the vls shape is getting larger than it should be because I'm adding the vls offset for retardation... I really shouldn't do that.
+    print(vlsmean.shape[0])
+    print(np.max(tofv))
+    print(np.max(toft))
+    '''
+    tofhist_csr = coo_matrix((tofd,(toft,tofv)),shape=((2**14,vlsmean.shape[0]+512)),dtype=np.uint16).tocsr()
+    enhist_csr = coo_matrix((tofd,(en,tofv)),shape=((2**14,vlsmean.shape[0]+512)),dtype=np.uint16).tocsr()
 
-    histname = '%s/ascii/Neon_port_%i.hist.dat'%(datadir,portnum)
-    enhistname = '%s/ascii/Neon_port_%i.enhist_high.dat'%(datadir,portnum)
-    tofname = '%s/ascii/Neon_port_%i.tof.dat'%(datadir,portnum)
-    dokname = '%s/ascii/Neon_port_%i.dok.dat'%(datadir,portnum)
-    vlsname = '%s/ascii/Neon_port_%i.vls.dat'%(datadir,portnum)
+    histname = '%s/ascii/Argon_port_%i.hist.dat'%(datadir,portnum)
+    enhistname = '%s/ascii/Argon_port_%i.enhist_high.dat'%(datadir,portnum)
+    tofname = '%s/ascii/Argon_port_%i.tof.dat'%(datadir,portnum)
+    dokname = '%s/ascii/Argon_port_%i.dok.dat'%(datadir,portnum)
+    vlsname = '%s/ascii/Argon_port_%i.vls.dat'%(datadir,portnum)
 
     np.savetxt(vlsname,vlsmean,fmt='%.2f')
-    h= tofhist_csr.toarray()[2000:4000,1024:] # this index selection is a function of the scaling at ### SCALING HERE ###
+    h= tofhist_csr.toarray()[8000:,1024:] # this index selection is a function of the scaling at ### SCALING HERE ###
     np.savetxt(histname,h,fmt='%i')
     np.savetxt(tofname,np.sum(h,axis=1),fmt='%i')
     e= enhist_csr.toarray()[:4000,1024:]
