@@ -1,0 +1,1 @@
+RUN=83;source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh; ~coffee/analysis_2021/x42619/src/hits2h5.py tmox42619 $RUN 100000
