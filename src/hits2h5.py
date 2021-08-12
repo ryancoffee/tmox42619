@@ -92,9 +92,9 @@ def dctLogic(s,inflate=4):
 	wave = np.append(s,np.flip(s,axis=0))
 	WAVE = dct(wave)
 	WAVE = rollon(WAVE,10)
-	WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0]))
-	DWAVE = np.copy(WAVE)
-	DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0]
+	WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0])) # adding zeros to the end of the transfored vector
+	DWAVE = np.copy(WAVE) # preparing to also make a derivative
+	DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
 	return idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
 
 def scanedges(d,minthresh,expand=4):
@@ -117,15 +117,15 @@ def scanedges(d,minthresh,expand=4):
 		stop = i
 		if stop-start<4:
 			continue
-		x = np.arange(stop-start,dtype=float)
-		y = d[start:stop]
-		x0 = float(stop)/2.
-		y -= (y[0]+y[-1])/2.
-		theta = np.linalg.pinv( mypoly(np.array(x).astype(float),order=order) ).dot(np.array(y).astype(float))
+		x = np.arange(stop-start,dtype=float) # set x to index values
+		y = d[start:stop] # set y to vector values
+		x0 = float(stop)/2. # set x0 to halfway point
+		y -= (y[0]+y[-1])/2. # subtract average (this gets rid of residual DC offsets)
+		theta = np.linalg.pinv( mypoly(np.array(x).astype(float),order=order) ).dot(np.array(y).astype(float)) # fit a polynomial (order 3) to the points
 		for j in range(newtloops): # 3 rounds of Newton-Raphson
 			X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 			x0 -= theta.dot(X0)/theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]) # this seems like maybe it should be wrong
-		tofs += [np.uint32(expand*(start + x0))]
+		tofs += [np.uint32(expand*(start + x0))] ###### CAREFUL  THIS IS NEW!  (4 am idea)... expand here is further subdividing the infated indices beacaus of Newton-Raphson.
 		X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 		#slopes += [np.int32(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
 		slopes += [np.int16((theta[1]+x0*theta[2])/2**20)] ## scaling by 2**20 in order ti reign in the obscene derivatives... probably shoul;d be scaling d here instead
@@ -136,7 +136,7 @@ class Port:
 		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
 		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-	def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,slopethresh=500,scale=4,inflate=4):
+        def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,slopethresh=500,scale=4,inflate=4):#expand=4): # exand is for sake of Newton-Raphson
 		self.portnum = portnum
 		self.hsd = hsd
 		self.t0 = t0
@@ -166,8 +166,9 @@ class Port:
 			for adc in range(self.nadcs):
 				b = np.mean(s[adc:self.baselim:self.nadcs])
 				s[adc::self.nadcs] -= np.int16(b)
-			logic = dctLogic(s,self.inflate)
-			e,de,ne = scanedges(logic,self.logicthresh,expand=4) # the expand here is how much we subdivide the pixels in the already dct expanded digitizer steps (sake of Newton-Raphson root resolution)
+			logic = dctLogic(s,self.inflate) #produce the "logic vector"
+			e,de,ne = scanedges(logic,self.logicthresh,expand=4) # scan the logic vector for hits
+                        # the expand here is how much we subdivide the pixels in the already dct expanded digitizer steps (sake of Newton-Raphson root resolution)
 		if self.initState:
 			self.sz = s.shape[0]*self.inflate
 			self.tofs = [0]
@@ -204,6 +205,9 @@ class Port:
 		return self
 
 def main():
+        ############################################
+        ###### Change this to your output dir ######
+        ############################################
 	scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
 	expname = 'tmox42619'
 	runnum = 62 
@@ -217,18 +221,18 @@ def main():
 
 	print('starting analysis exp %s for run %i'%(expname,int(runnum)))
 
-	chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number
+        chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
 	t0s = {0:24000,1:24000,2:24000,4:24000,5:24000,12:24000,13:25725,14:25000,15:24000,16:24000} ## these are in the tof units
 	#t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096} ## I believe these are in nanoseconds
 	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
-	t0s = {0:27460,1:25114,2:24981,4:24295,5:24768,12:24645,13:24669,14:25087,15:26742,16:24507}
+	t0s = {0:27460,1:25114,2:24981,4:24295,5:24768,12:24645,13:24669,14:25087,15:26742,16:24507} ## watchout, I bet these are 1/4 of what they should be ... look for 'expand'
 	slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
 
 	spect = Vls()
 	ebunch = Ebeam()
 	port = {} 
 	scale = 4
-	inflate = 4
+	inflate = 4 # this determines the oversampling
 	for key in logicthresh.keys():
 		logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
@@ -250,10 +254,10 @@ def main():
 		ebeam = run.Detector('ebeam')
 		wv = {}
 		wv_logic = {}
-		v = []
-		vc = []
-		vs = []
-		l3 = []
+		v = [] # vls data matrix
+		vc = [] # vls centroids vector
+		vs = [] # vls sum is I think not used, maybe for normalization or used to be for integration and PDF sampling
+		l3 = [] # e-beam l3 (linac 3) in GeV.
 
 
 		init = True 
@@ -266,8 +270,8 @@ def main():
 			''' VLS specific section, do this first to slice only good shots '''
 			try:
 				vlswv = np.squeeze(vls.raw.value(evt))
-				vlswv = vlswv-int(np.mean(vlswv[1900:]))
-				if np.max(vlswv)<300: 
+				vlswv = vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
+				if np.max(vlswv)<300:  # too little amount of xrays
 					print(eventnum,'skip per weak vls')
 					eventnum += 1
 					continue
@@ -291,7 +295,7 @@ def main():
 
 
 			''' HSD-Abaco section '''
-			for key in chans.keys():
+			for key in chans.keys(): # here key means 'port number'
 				s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
 				port[key].process(s)
 
@@ -309,7 +313,7 @@ def main():
 		f = h5py.File('%s/hits.%s.run%i.hires.h5'%(scratchdir,expname,runnum),'w') 
                 # use f.create_group('port_%i'%i,portnum)
 		#_ = [print(key,chans[key]) for key in chans.keys()]
-		for key in chans.keys():
+		for key in chans.keys(): # remember key == port number
 			g = f.create_group('port_%i'%(key))
 			g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint32) 
 			g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
@@ -319,7 +323,7 @@ def main():
 			g.attrs.create('t0',data=port[key].t0,dtype=np.uint32)
 			g.attrs.create('slopethresh',data=port[key].slopethresh,dtype=np.uint16)
 			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint32)
+			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint32) ### need to also multiply by expand #### HERE HERE HERE HERE
 		grpvls = f.create_group('vls')
 		grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
 		grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
