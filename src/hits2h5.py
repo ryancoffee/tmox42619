@@ -97,7 +97,7 @@ def dctLogic(s,inflate=4):
 	DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0]
 	return idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
 
-def scanedges(d,minthresh):
+def scanedges(d,minthresh,expand=4):
 	tofs = []
 	slopes = []
 	sz = d.shape[0]
@@ -125,10 +125,10 @@ def scanedges(d,minthresh):
 		for j in range(newtloops): # 3 rounds of Newton-Raphson
 			X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 			x0 -= theta.dot(X0)/theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]) # this seems like maybe it should be wrong
-		tofs += [np.uint32(start + x0)]
+		tofs += [np.uint32(expand*(start + x0))]
 		X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 		#slopes += [np.int32(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
-		slopes += [np.int64((theta[1]+x0*theta[2]))//2**20] ## scaling by 2**20 in order ti reign in the obscene derivatives... probably shoul;d be scaling d here instead
+		slopes += [np.int16((theta[1]+x0*theta[2]))//2**20] ## scaling by 2**20 in order ti reign in the obscene derivatives... probably shoul;d be scaling d here instead
 	return tofs,slopes,len(tofs)
 
 class Port:
@@ -167,7 +167,7 @@ class Port:
 				b = np.mean(s[adc:self.baselim:self.nadcs])
 				s[adc::self.nadcs] -= np.int16(b)
 			logic = dctLogic(s,self.inflate)
-			e,de,ne = scanedges(logic,self.logicthresh)
+			e,de,ne = scanedges(logic,self.logicthresh,expand=4) # the expand here is how much we subdivide the pixels in the already dct expanded digitizer steps (sake of Newton-Raphson root resolution)
 		if self.initState:
 			self.sz = s.shape[0]*self.inflate
 			self.tofs = [0]
@@ -221,8 +221,8 @@ def main():
 	t0s = {0:24000,1:24000,2:24000,4:24000,5:24000,12:24000,13:25725,14:25000,15:24000,16:24000} ## these are in the tof units
 	#t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096} ## I believe these are in nanoseconds
 	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
-        t0s = {0:27460,1:25114,2:24981,4:24295,5:24768,12:24645,13:24669,14:25087,15:26742,16:24507}
-        slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
+	t0s = {0:27460,1:25114,2:24981,4:24295,5:24768,12:24645,13:24669,14:25087,15:26742,16:24507}
+	slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
 
 	spect = Vls()
 	ebunch = Ebeam()
@@ -306,7 +306,7 @@ def main():
 				print(eventnum)
 			eventnum += 1
 
-		f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') 
+		f = h5py.File('%s/hits.%s.run%i.hires.h5'%(scratchdir,expname,runnum),'w') 
                 # use f.create_group('port_%i'%i,portnum)
 		#_ = [print(key,chans[key]) for key in chans.keys()]
 		for key in chans.keys():
@@ -317,7 +317,7 @@ def main():
 			g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
 			g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
 			g.attrs.create('t0',data=port[key].t0,dtype=np.uint32)
-			g.attrs.create('slopethresh',data=port[key].slopthresh,dtype=np.uint16)
+			g.attrs.create('slopethresh',data=port[key].slopethresh,dtype=np.uint16)
 			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
 			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint32)
 		grpvls = f.create_group('vls')
