@@ -136,7 +136,7 @@ class Port:
 		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
 		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-        def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,slopethresh=500,scale=4,inflate=4):#expand=4): # exand is for sake of Newton-Raphson
+        def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,slopethresh=500,scale=4,inflate=4,expand=4): # exand is for sake of Newton-Raphson
 		self.portnum = portnum
 		self.hsd = hsd
 		self.t0 = t0
@@ -147,6 +147,7 @@ class Port:
 		self.initState = True
 		self.scale = scale
 		self.inflate = inflate
+                self.expand = expand
 		self.sz = 0
 		self.tofs = []
 		self.slopes = []
@@ -167,10 +168,10 @@ class Port:
 				b = np.mean(s[adc:self.baselim:self.nadcs])
 				s[adc::self.nadcs] -= np.int16(b)
 			logic = dctLogic(s,self.inflate) #produce the "logic vector"
-			e,de,ne = scanedges(logic,self.logicthresh,expand=4) # scan the logic vector for hits
+			e,de,ne = scanedges(logic,self.logicthresh,self.expand) # scan the logic vector for hits
                         # the expand here is how much we subdivide the pixels in the already dct expanded digitizer steps (sake of Newton-Raphson root resolution)
 		if self.initState:
-			self.sz = s.shape[0]*self.inflate
+			self.sz = s.shape[0]*self.inflate*self.expand
 			self.tofs = [0]
 			if ne<1:
 				self.addresses = [int(0)]
@@ -221,8 +222,14 @@ def main():
 
 	print('starting analysis exp %s for run %i'%(expname,int(runnum)))
 
+        nr_expand = 4
+
         chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
 	t0s = {0:24000,1:24000,2:24000,4:24000,5:24000,12:24000,13:25725,14:25000,15:24000,16:24000} ## these are in the tof units
+        ########### HERE HERE HERE HERE ###############
+        ########### this is a hack to account for newton raphson subdividing by 'expand'
+        for key in t0s.keys():
+            t0s[key] *= nr_expand 
 	#t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096} ## I believe these are in nanoseconds
 	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
 	t0s = {0:27460,1:25114,2:24981,4:24295,5:24768,12:24645,13:24669,14:25087,15:26742,16:24507} ## watchout, I bet these are 1/4 of what they should be ... look for 'expand'
@@ -237,7 +244,7 @@ def main():
 		logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
 	for key in chans.keys():
-		port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],slopethresh=slopethresh[key],inflate=inflate,scale=scale)
+		port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],slopethresh=slopethresh[key],inflate=inflate,expand=nr_expand,scale=scale)
 
 	ds = psana.DataSource(exp=expname,run=runnum)
 

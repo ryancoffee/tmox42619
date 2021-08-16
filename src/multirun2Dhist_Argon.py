@@ -67,6 +67,8 @@ def processmultitofs_log(fnames,calibfname,portnum):
     # from Neon runs 80s-90s 
     # t0 = {'port_0':27460,'port_1':25114,'port_2':24981,'port_4':24295,'port_5':24768,'port_12':24645,'port_13':24669,'port_14':25087,'port_15':26742,'port_16':24507}
     ### Argon runs 7-17 t0s
+    ### now we need to account for hte Newton-Raphson expansion as well
+    ### t0 = {'port_0':27913,'port_1':25570,'port_2':24900,'port_4':24752,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27198,'port_16':24000}
     t0 = {'port_0':27913,'port_1':25570,'port_2':24900,'port_4':24752,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27198,'port_16':24000}
     slopethresh = {'port_0':500,'port_1':500,'port_2':300,'port_4':150,'port_5':500,'port_12':500,'port_13':500,'port_14':500,'port_15':500,'port_16':300}
     vlsoffsetdict = {82:141,83:141,84:141,85:141,86:141,87:0,88:0,89:0,90:0,93:0,94:0,95:0}
@@ -107,13 +109,16 @@ def processmultitofs_log(fnames,calibfname,portnum):
         else:
             vlsmean += np.mean(data['vls']['data'],axis=0)
         vlswindow = (-100,100)
-        peaks = np.argmax(data['vls']['data'][:,1024:],axis=1)
+        #peaks = np.argmax(data['vls']['data'][:,1024:],axis=1) ## for 700eV photons
+        peaks = np.argmax(data['vls']['data'][:,256:],axis=1)
         vlscsum = []
         vlsspec = []
         vlsinds = []
         for i,p in enumerate(peaks):
-            vlsinds.append([i for i in range( max(0,1024+p+vlswindow[0]) , min(1900,1024+p+vlswindow[1]) )])
-            tmp = data['vls']['data'][i,vlsinds[-1]] - np.max(data['vls']['data'][i,1024:1044]) ## restricting to high indices for sake of capturing only 3rd order (4th order near pixel 100)
+            vlsinds.append([i for i in range( max(0,256+p+vlswindow[0]) , min(1900,256+p+vlswindow[1]) )]) ## for below 600eV or 700eV photons when the 2nd and 3rd order don't fit in window
+            #vlsinds.append([i for i in range( max(0,1024+p+vlswindow[0]) , min(1900,1024+p+vlswindow[1]) )]) ## for 700eV photons
+            tmp = data['vls']['data'][i,vlsinds[-1]] - np.max(data['vls']['data'][i,128:256]) ## restricting to high indices for sake of capturing only 3rd order (4th order near pixel 100)
+            #tmp = data['vls']['data'][i,vlsinds[-1]] - np.max(data['vls']['data'][i,1024:1044]) ## only for 700eV photons.. restricting to high indices for sake of capturing only 3rd order (4th order near pixel 100)
             tmp *= (tmp>0)
             vlscsum.append( np.cumsum( tmp ) )
             vlsspec.append( tmp )
@@ -126,7 +131,7 @@ def processmultitofs_log(fnames,calibfname,portnum):
 
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
-                tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - t0['port_%i'%portnum]
+                tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - 4*t0['port_%i'%portnum]
                 tmpslope = tofslope[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ]
                 if len(tmpt)==len(tmpslope):
                     toflist = []
@@ -196,7 +201,8 @@ def main():
     vlsname = '%s/ascii/Argon_port_%i.vls.dat'%(datadir,portnum)
 
     np.savetxt(vlsname,vlsmean,fmt='%.2f')
-    h= tofhist_csr.toarray()[8000:,1024:] # this index selection is a function of the scaling at ### SCALING HERE ###
+    h= tofhist_csr.toarray()[8000:,256:] # this index selection is a function of the scaling at ### SCALING HERE ###
+    #h= tofhist_csr.toarray()[8000:,1024:] # this index selection is a function of the scaling at ### SCALING HERE ###
     np.savetxt(histname,h,fmt='%i')
     np.savetxt(tofname,np.sum(h,axis=1),fmt='%i')
     e= enhist_csr.toarray()[:4000,1024:]
