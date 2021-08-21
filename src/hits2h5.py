@@ -132,11 +132,11 @@ def scanedges(d,minthresh,expand=4):
 	return tofs,slopes,len(tofs)
 
 class Port:
-		# Note that t0s are aligned with 'prompt' in the digitizer logic signal
-		# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
-		# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
+	# Note that t0s are aligned with 'prompt' in the digitizer logic signal
+	# Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
+	# hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-        def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,slopethresh=500,scale=4,inflate=4,expand=4): # exand is for sake of Newton-Raphson
+	def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-24000,slopethresh=500,scale=4,inflate=4,expand=4): # exand is for sake of Newton-Raphson
 		self.portnum = portnum
 		self.hsd = hsd
 		self.t0 = t0
@@ -147,7 +147,7 @@ class Port:
 		self.initState = True
 		self.scale = scale
 		self.inflate = inflate
-                self.expand = expand
+		self.expand = expand
 		self.sz = 0
 		self.tofs = []
 		self.slopes = []
@@ -221,18 +221,26 @@ def main():
 		nshots = int(sys.argv[3])
 
 	print('starting analysis exp %s for run %i'%(expname,int(runnum)))
-
-        nr_expand = 4
-
-        chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
+	nr_expand = 4
+	chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
 	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
 	slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
-        0s = {0:109840,1:100456,2:99924,4:97180,5:99072,12:98580,13:98676,14:100348,15:106968,16:98028}
+	#t0s = {0:109840,1:100456,2:99924,4:97180,5:99072,12:98580,13:98676,14:100348,15:106968,16:98028}
+	t0s = {0:109830,1:100451,2:99810,4:97180,5:99071,12:98561,13:98657,14:100331,15:106956,16:97330}
+	'''
+	argon   prompt>300      proposed
+	0       109500  109830
+	1       100121  100451
+	2       99480   99810
+	4       96850   97180
+	5       98741   99071
+	12      98231   98561
+	13      98327   98657
+	14      100001  100331
+	15      106626  106956
+	16      97000   97330
+	'''
 
-        ########### HERE HERE HERE HERE ###############
-        ########### this is a hack to account for newton raphson subdividing by 'expand'
-        for key in t0s.keys():
-            t0s[key] *= nr_expand 
 
 	spect = Vls()
 	ebunch = Ebeam()

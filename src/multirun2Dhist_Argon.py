@@ -69,7 +69,8 @@ def processmultitofs_log(fnames,calibfname,portnum):
     ### Argon runs 7-17 t0s
     ### now we need to account for hte Newton-Raphson expansion as well
     ### t0 = {'port_0':27913,'port_1':25570,'port_2':24900,'port_4':24752,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27198,'port_16':24000}
-    t0 = {'port_0':27913,'port_1':25570,'port_2':24900,'port_4':24752,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27198,'port_16':24000}
+    #t0 = {'port_0':27913,'port_1':25570,'port_2':24900,'port_4':24752,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27198,'port_16':24000}
+    t0 = {0:109830,1:100451,2:99810,4:97180,5:99071,12:98561,13:98657,14:100331,15:106956,16:97330}
     slopethresh = {'port_0':500,'port_1':500,'port_2':300,'port_4':150,'port_5':500,'port_12':500,'port_13':500,'port_14':500,'port_15':500,'port_16':300}
     vlsoffsetdict = {82:141,83:141,84:141,85:141,86:141,87:0,88:0,89:0,90:0,93:0,94:0,95:0}
     vlsoffsetdict.update({7:0,8:50,9:100,10:150,11:175,12:225,13:250,14:275,15:300,16:325,17:125})
@@ -125,13 +126,13 @@ def processmultitofs_log(fnames,calibfname,portnum):
 
         tof = data['port_%i'%portnum]['tofs']
         tofslope = data['port_%i'%portnum]['slopes']
-        #t0 = attrs['port_%i'%portnum]['t0']
+        t0 = attrs['port_%i'%portnum]['t0']
         tofaddresses = data['port_%i'%portnum]['addresses']
         tofnedges= data['port_%i'%portnum]['nedges']
 
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
-                tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - 4*t0['port_%i'%portnum]
+                tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - t0['port_%i'%portnum]
                 tmpslope = tofslope[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ]
                 if len(tmpt)==len(tmpslope):
                     toflist = []
