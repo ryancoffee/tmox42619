@@ -117,15 +117,15 @@ def scanedges(d,minthresh,expand=4):
 		stop = i
 		if stop-start<4:
 			continue
-		x = np.arange(stop-start,dtype=float) # set x to index values
+		x = expand*np.arange(stop-start,dtype=float) # set x to index values
 		y = d[start:stop] # set y to vector values
-		x0 = float(stop)/2. # set x0 to halfway point
+		x0 = float(expand*stop)/2. # set x0 to halfway point
 		y -= (y[0]+y[-1])/2. # subtract average (this gets rid of residual DC offsets)
 		theta = np.linalg.pinv( mypoly(np.array(x).astype(float),order=order) ).dot(np.array(y).astype(float)) # fit a polynomial (order 3) to the points
 		for j in range(newtloops): # 3 rounds of Newton-Raphson
 			X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 			x0 -= theta.dot(X0)/theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]) # this seems like maybe it should be wrong
-		tofs += [np.uint32(expand*(start + x0))] ###### CAREFUL  THIS IS NEW!  (4 am idea)... expand here is further subdividing the infated indices beacaus of Newton-Raphson.
+		tofs += [np.uint32(start + x0)] ###### CAREFUL  THIS IS NEW!  (4 am idea)... expand here is further subdividing the infated indices beacaus of Newton-Raphson.
 		X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 		#slopes += [np.int32(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
 		slopes += [np.int16((theta[1]+x0*theta[2])/2**20)] ## scaling by 2**20 in order ti reign in the obscene derivatives... probably shoul;d be scaling d here instead
@@ -225,15 +225,14 @@ def main():
         nr_expand = 4
 
         chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
-	t0s = {0:24000,1:24000,2:24000,4:24000,5:24000,12:24000,13:25725,14:25000,15:24000,16:24000} ## these are in the tof units
+	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
+	slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
+        0s = {0:109840,1:100456,2:99924,4:97180,5:99072,12:98580,13:98676,14:100348,15:106968,16:98028}
+
         ########### HERE HERE HERE HERE ###############
         ########### this is a hack to account for newton raphson subdividing by 'expand'
         for key in t0s.keys():
             t0s[key] *= nr_expand 
-	#t0s = {0:4585,1:4206,2:4166,4:4055,5:4139,12:4139,13:4133,14:4185,15:4460,16:4096} ## I believe these are in nanoseconds
-	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
-	t0s = {0:27460,1:25114,2:24981,4:24295,5:24768,12:24645,13:24669,14:25087,15:26742,16:24507} ## watchout, I bet these are 1/4 of what they should be ... look for 'expand'
-	slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
 
 	spect = Vls()
 	ebunch = Ebeam()
@@ -327,6 +326,7 @@ def main():
 			g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
 			g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
 			g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
+			g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
 			g.attrs.create('t0',data=port[key].t0,dtype=np.uint32)
 			g.attrs.create('slopethresh',data=port[key].slopethresh,dtype=np.uint16)
 			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
