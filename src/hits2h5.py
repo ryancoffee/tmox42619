@@ -17,6 +17,8 @@ import sys
 import h5py
 from scipy.fftpack import dct,idct,idst
 
+from utils import mypoly
+
 def PWRspectrum(wv):
 	return np.power(abs(np.fft.fft(wv).real),int(2))
 
@@ -25,14 +27,6 @@ def rollon(vec,n):
 	return vec
 
 
-def mypoly(x,order=4):
-	result = np.ones((x.shape[0],order+1),dtype=float)
-	result[:,1] = x.copy()
-	if order < 2:
-		return result
-	for p in range(2,order+1):
-		result[:,p] = np.power(result[:,1],int(p))
-	return result
 
 ###########################################
 ########### Class definitions #############
