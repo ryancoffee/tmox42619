@@ -86,7 +86,8 @@ def dctLogic(s,inflate=4):
 	wave = np.append(s,np.flip(s,axis=0))
 	WAVE = dct(wave)
 	WAVE = rollon(WAVE,10)
-	WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0])) # adding zeros to the end of the transfored vector
+	if inflate>1:
+		WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0])) # adding zeros to the end of the transfored vector
 	DWAVE = np.copy(WAVE) # preparing to also make a derivative
 	DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
 	return idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
@@ -95,7 +96,7 @@ def scanedges(d,minthresh,expand=4):
 	tofs = []
 	slopes = []
 	sz = d.shape[0]
-	newtloops = 3
+	newtloops = 4
 	order = 3
 	i = 1
 	while i < sz-10:
@@ -119,10 +120,10 @@ def scanedges(d,minthresh,expand=4):
 		for j in range(newtloops): # 3 rounds of Newton-Raphson
 			X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 			x0 -= theta.dot(X0)/theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]) # this seems like maybe it should be wrong
-		tofs += [np.uint32(start + x0)] ###### CAREFUL  THIS IS NEW!  (4 am idea)... expand here is further subdividing the infated indices beacaus of Newton-Raphson.
+		tofs += [np.uint64(start + x0)] ###### CAREFUL  THIS IS NEW!  (4 am idea)... expand here is further subdividing the infated indices beacaus of Newton-Raphson.
 		X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
-		#slopes += [np.int32(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
-		slopes += [np.int16((theta[1]+x0*theta[2])/2**18)] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
+		#slopes += [np.int64(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
+		slopes += [np.uint64((theta[1]+x0*theta[2])/2**18)] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
 	return tofs,slopes,len(tofs)
 
 class Port:
@@ -160,7 +161,7 @@ class Port:
 			#print(s[:10])
 			for adc in range(self.nadcs):
 				b = np.mean(s[adc:self.baselim:self.nadcs])
-				s[adc::self.nadcs] -= np.int16(b)
+				s[adc::self.nadcs] -= float(b)
 			logic = dctLogic(s,self.inflate) #produce the "logic vector"
 			e,de,ne = scanedges(logic,self.logicthresh,self.expand) # scan the logic vector for hits
                         # the expand here is how much we subdivide the pixels in the already dct expanded digitizer steps (sake of Newton-Raphson root resolution)
@@ -215,10 +216,11 @@ def main():
 		nshots = int(sys.argv[3])
 
 	print('starting analysis exp %s for run %i'%(expname,int(runnum)))
-	nr_expand = 4
+	nr_expand = 8 
 	chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
 	logicthresh = {0:-8000, 1:-8000, 2:-400, 4:-8000, 5:-8000, 12:-8000, 13:-8000, 14:-8000, 15:-8000, 16:-8000}
-	slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
+	#slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
+	slopethresh = {0:50,1:50,2:30,4:15,5:50,12:50,13:50,14:50,15:50,16:30}
 	#t0s = {0:109840,1:100456,2:99924,4:97180,5:99072,12:98580,13:98676,14:100348,15:106968,16:98028}
 	t0s = {0:109830,1:100451,2:99810,4:97180,5:99071,12:98561,13:98657,14:100331,15:106956,16:97330}
 	'''
@@ -240,7 +242,7 @@ def main():
 	ebunch = Ebeam()
 	port = {} 
 	scale = 4
-	inflate = 4 # this determines the oversampling
+	inflate = 8 # this determines the oversampling
 	for key in logicthresh.keys():
 		logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
@@ -304,7 +306,7 @@ def main():
 
 			''' HSD-Abaco section '''
 			for key in chans.keys(): # here key means 'port number'
-				s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+				s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=float) 
 				port[key].process(s)
 
 			if init==True:
@@ -323,16 +325,16 @@ def main():
 		#_ = [print(key,chans[key]) for key in chans.keys()]
 		for key in chans.keys(): # remember key == port number
 			g = f.create_group('port_%i'%(key))
-			g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint32) 
-			g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
+			g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint64) 
+			g.create_dataset('slopes',data=port[key].slopes,dtype=np.uint64) 
 			g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
 			g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
 			g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
 			g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
-			g.attrs.create('t0',data=port[key].t0,dtype=np.uint32)
-			g.attrs.create('slopethresh',data=port[key].slopethresh,dtype=np.uint16)
+			g.attrs.create('t0',data=port[key].t0,dtype=np.uint64)
+			g.attrs.create('slopethresh',data=port[key].slopethresh,dtype=np.uint64)
 			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint32) ### need to also multiply by expand #### HERE HERE HERE HERE
+			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
 		grpvls = f.create_group('vls')
 		grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
 		grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
