@@ -54,6 +54,7 @@ def main():
 
     if len(sys.argv)<2:
         print('give output .h5 filename as arguement')
+        return
     argoncalib = Calib().setrets(rets=[50,125]).setports(ports=[0,1,2,4,5,12,13,14,15,16])
     argoncalib.sett0s( {'port_0':109830,'port_1':100451,'port_2':99810,'port_4':97180,'port_5':99071,'port_12':98561,'port_13':98657,'port_14':100331,'port_15':106956,'port_16':97330} )
 
@@ -94,6 +95,7 @@ def main():
     argoncalib.addpoints(ret=125,port=14, pointsdict = {259.2:5537,245.7:5622,80.5:9462,25.5:15873} )
     argoncalib.addpoints(ret=125,port=15, pointsdict = {259.2:5537,245.7:5622,80.5:9467,25.5:16060} )
     argoncalib.addpoints(ret=125,port=16, pointsdict = {} )
+
 
 
     argoncalib.h5out(sys.argv[1])

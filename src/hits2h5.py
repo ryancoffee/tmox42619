@@ -122,7 +122,7 @@ def scanedges(d,minthresh,expand=4):
 		tofs += [np.uint32(start + x0)] ###### CAREFUL  THIS IS NEW!  (4 am idea)... expand here is further subdividing the infated indices beacaus of Newton-Raphson.
 		X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 		#slopes += [np.int32(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
-		slopes += [np.int16((theta[1]+x0*theta[2])/2**20)] ## scaling by 2**20 in order ti reign in the obscene derivatives... probably shoul;d be scaling d here instead
+		slopes += [np.int16((theta[1]+x0*theta[2])/2**18)] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
 	return tofs,slopes,len(tofs)
 
 class Port:

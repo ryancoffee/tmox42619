@@ -6,6 +6,7 @@ import sys
 from scipy.interpolate import interp1d 
 from scipy.sparse import coo_matrix,csr_matrix
 import re
+from utils import mypoly,fitpoly
 
 def logt2e(lt,coeffs,x0):
     if lt<1.:
@@ -102,10 +103,13 @@ def processmultitofs_log(fnames,calibfname,portnum):
         x0 = lt2ecalib['x0'][()]
     ##########################################################
 
+    thetas = {}
+    x0s = {}
     for fname in fnames:
         data = {}
         attrs = {}
         data,attrs = loadh5(fname)
+        thetas,x0s = loadh5calib(calibfname)
         m = re.search('run(\d+).h5$',fname)
         vlsoffset = 0
         if m:

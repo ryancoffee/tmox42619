@@ -6,6 +6,7 @@ import sys
 from scipy.interpolate import interp1d 
 from scipy.sparse import coo_matrix,csr_matrix
 import re
+from utils import mypoly,fitpoly
 
 def logt2e(lt,coeffs,x0):
     if lt<1.:
@@ -19,8 +20,8 @@ def getcentroid(inds,spec):
     num = np.sum(x*y)
     denom = np.sum(y)
     if (denom>0):
-        return [int(num/denom)]
-    return [0]
+        return int(num/denom)
+    return 0
 
 def samplePDF(inds,csum,nsamples = 16):
     x = csum
@@ -36,16 +37,14 @@ def samplePDF(inds,csum,nsamples = 16):
     xnew = np.random.random((nsamples,))*(xx[-2]-xx[1]) + xx[1]
     return list(f(xnew).astype(np.uint16))
 
-def loadh5calib(fname):
-    thetas = {}
-    x0s = {}
+def loadh5calib(fname,portnum):
     with h5py.File(fname,'r') as f:
-        for key in f.keys():
-            for p in f[key].keys():
-                if re.search('port_\d+',p):
-                    thetas.update( {p:f[key][p].attrs['theta']} )
-                    x0s.update( {p:f[key][p].attrs['x0']} )
-    return thetas,x0s
+        for n,key in enumerate(f.keys()):
+            if n>0:
+                continue
+            theta = f[key]['port_%i'%portnum].attrs['theta']
+            x0 = f[key]['port_%i'%portnum].attrs['x0']
+    return theta,x0
 
 def loadh5(fname):
     data = {}
@@ -81,26 +80,22 @@ def processmultitofs_log(fnames,calibfname,portnum):
     ### now we need to account for hte Newton-Raphson expansion as well
     ### t0 = {'port_0':27913,'port_1':25570,'port_2':24900,'port_4':24752,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27198,'port_16':24000}
     #t0 = {'port_0':27913,'port_1':25570,'port_2':24900,'port_4':24752,'port_5':25225,'port_12':25100,'port_13':25120,'port_14':25540,'port_15':27198,'port_16':24000}
-    #t0 = {0:109830,1:100451,2:99810,4:97180,5:99071,12:98561,13:98657,14:100331,15:106956,16:97330}
-    slopethresh = {'port_0':500,'port_1':500,'port_2':300,'port_4':150,'port_5':500,'port_12':500,'port_13':500,'port_14':500,'port_15':500,'port_16':300}
+    t0 = {0:109830,1:100451,2:99810,4:97180,5:99071,12:98561,13:98657,14:100331,15:106956,16:97330}
+    #slopethresh = {'port_0':50,'port_1':50,'port_2':30,'port_4':15,'port_5':50,'port_12':50,'port_13':50,'port_14':50,'port_15':50,'port_16':30}
+    slopethresh = {'port_0':90,'port_1':90,'port_2':90,'port_4':90,'port_5':90,'port_12':90,'port_13':90,'port_14':90,'port_15':90,'port_16':90}
     vlsoffsetdict = {82:141,83:141,84:141,85:141,86:141,87:0,88:0,89:0,90:0,93:0,94:0,95:0}
     vlsoffsetdict.update({7:0,8:50,9:100,10:150,11:175,12:225,13:250,14:275,15:300,16:325,17:125})
     vlsoffsetdict.update({21:0,22:0,23:25,26:0,27:0,28:0,29:0,30:0,31:0,36:0,39:0,40:0})
     vlsoffsetdict.update({59:0,61:50,62:100,63:150,66:200,67:250,68:300,69:325,70:350,72:375,73:400,74:425})
     vlsmean = np.array((None,),dtype=float)
     tofv = [] # for vls spectrometer index
-    toflogt = [] # for time-of-flight index
-    en = []
+    toft = [] # for time-of-flight index
+    en = [] # for energy index
     tofd = [] # for counting
     ncor = 0
 
     ########## setting up for energy calibration ##############
-    lt2e_coeffs = [5. ,-4., -0.5, 1.5] 
-    x0 = 6.7
-    with h5py.File(calibfname,'r') as lt2ecalib:
-        lt2e_coeffs = lt2ecalib['port_%i'%portnum]['lt2e_coeffs'][()]
-        x0 = lt2ecalib['x0'][()]
-    ##########################################################
+    theta,x0 = loadh5calib(calibfname,portnum)
 
     for fname in fnames:
         data = {}
@@ -137,93 +132,96 @@ def processmultitofs_log(fnames,calibfname,portnum):
 
         tof = data['port_%i'%portnum]['tofs']
         tofslope = data['port_%i'%portnum]['slopes']
-        t0 = attrs['port_%i'%portnum]['t0']
+        t0 = 0.5*attrs['port_%i'%portnum]['t0'] 
+        print('port_%i\tt0 = %i'%(portnum,t0))
+        
         tofaddresses = data['port_%i'%portnum]['addresses']
         tofnedges= data['port_%i'%portnum]['nedges']
 
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
-                tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] - t0['port_%i'%portnum]
+                tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] -t0
                 tmpslope = tofslope[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ]
                 if len(tmpt)==len(tmpslope):
                     toflist = []
                     slopelist = []
                     for j in range(len(tmpt)):
                         if tmpslope[j]>slopethresh['port_%i'%portnum]: 
-                            toflist += [np.int16(tmpt[j])]
-                            slopelist += [np.int32(tmpslope[j])]
+                            if tmpt[j] < 2**18:
+                                toflist += [tmpt[j]]
+                                slopelist += [np.int32(tmpslope[j])]
                     if i%1000==0: 
-                        print(i,t0['port_%i'%portnum],toflist,slopelist)
+                        print(i,toflist,slopelist)
                     if len(vlsinds[i])>150:
-                        #for j in samplePDF(vlsinds[i],vlscsum[i],len(toflist)): ### choose a fresh random set of 16 for each hit
-                        for j in getcentroid(vlsinds[i],vlsspec[i]): 
-                            for t in toflist:
-                                if t>1 and t<(2**15-1):
-                                    tmp = np.log2(t)/16.0*2**14 ### SCALING HERE ###
-                                    toflogt += [tmp] 
-                                    if tmp>2001:
-                                        tmpen = logt2e(tmp-2000.,lt2e_coeffs,x0) ### SCALING HERE ###
-                                        if tmpen<2**14:
-                                            en += [int(tmpen)]
-                                        else:
-                                            en += [int(0)]
-                                    else:
-                                        en += [int(0)]
-                                    #toflogt += [t]
-                                    tofv += [j+vlsoffset]
-                                    tofd += [1]
-                                    ncor += 1
-    return toflogt,tofv,tofd,en,vlsmean,ncor
+                        j = getcentroid(vlsinds[i],vlsspec[i])
+                        x = []
+                        for t in toflist:
+                            t *= 2.
+                            if t>0 and t<2**16:
+                                toft += [t]
+                                x += [np.log2(t)]
+                        #x = np.log2(toft) - x0
+                                tofv += [j+vlsoffset]
+                                tofd += [1]
+                                ncor += 1
+                        X = mypoly(x-x0,order=2)
+                        Y = X.dot(np.array(theta))
+                        ens = np.power(2.,3+Y)#.astype(np.uint16)
+                        en += list(ens)
+
+    return toft,tofv,tofd,en,vlsmean,ncor
 
 
 def main():
     if len(sys.argv)<3:
-        print('syntax: main <portnum> <h5file list>')
+        print('syntax: main <calibfilename> <h5file list>')
         return
-    portnum = np.int8(sys.argv[1])
+    calibfname = sys.argv[1]
     fnames = list(sys.argv[2:])
     fullname = sys.argv[2]
     datadir = './'
-    calibfname = 'calib/Neon_lt2e.h5'
     filefront = 'hits.h5'
 
     m = re.search('^(.+)/h5files/(.+).h5',fnames[0])
     if m:
         datadir = m.group(1)
-        calibfname = '%s/calib/Neon_lt2e.h5'%(m.group(1))
     else:
-        print('syntax: main <portnum> <h5file list>')
+        print('syntax: main <calibfilename> <h5file list>')
         return
 
 
-    toft,tofv,tofd,en,vlsmean,ncor = processmultitofs_log(fnames,calibfname,portnum)
-    '''
-    ## HERE HERE HERE the vls shape is getting larger than it should be because I'm adding the vls offset for retardation... I really shouldn't do that.
-    print(vlsmean.shape[0])
-    print(np.max(tofv))
-    print(np.max(toft))
-    '''
-    tofhist_csr = coo_matrix((tofd,(toft,tofv)),shape=((2**14,vlsmean.shape[0]+512)),dtype=np.uint16).tocsr()
-    enhist_csr = coo_matrix((tofd,(en,tofv)),shape=((2**14,vlsmean.shape[0]+512)),dtype=np.uint16).tocsr()
+    for portnum in (0,12):#,4,5,12,13,14,15):
+        toft,tofv,tofd,en,vlsmean,ncor = processmultitofs_log(fnames,calibfname,portnum)
+        print(len(toft),len(tofv),len(tofd))
+        tofhist_csr = coo_matrix((tofd,(toft,tofv)),shape=((2**18,vlsmean.shape[0]+512)),dtype=np.int16).tocsr()
 
-    histname = '%s/ascii/Argon_port_%i.hist.dat'%(datadir,portnum)
-    enhistname = '%s/ascii/Argon_port_%i.enhist_high.dat'%(datadir,portnum)
-    tofname = '%s/ascii/Argon_port_%i.tof.dat'%(datadir,portnum)
-    dokname = '%s/ascii/Argon_port_%i.dok.dat'%(datadir,portnum)
-    vlsname = '%s/ascii/Argon_port_%i.vls.dat'%(datadir,portnum)
+        #enhist_csr = coo_matrix((tofd,(en,tofv)),shape=((2**10,vlsmean.shape[0]+512)),dtype=np.uint16).tocsr()
 
-    np.savetxt(vlsname,vlsmean,fmt='%.2f')
-    h= tofhist_csr.toarray()[8000:,256:] # this index selection is a function of the scaling at ### SCALING HERE ###
-    #h= tofhist_csr.toarray()[8000:,1024:] # this index selection is a function of the scaling at ### SCALING HERE ###
-    np.savetxt(histname,h,fmt='%i')
-    np.savetxt(tofname,np.sum(h,axis=1),fmt='%i')
-    e= enhist_csr.toarray()[:4000,1024:]
-    np.savetxt(enhistname,e,fmt='%i')
-    f = open(dokname,'w')
-    tofhist_dok = tofhist_csr.todok()
-    for key in tofhist_dok.keys():
-        print('%i\t%i\t%i'%(key[0],key[1],tofhist_dok[key] ),file=f)
-    f.close()
+        tofhistname = '%s/ascii/Argon_port_%i.tofhist.dat'%(datadir,portnum)
+        bins = np.arange(2**16)
+        h,b = np.histogram(toft,bins)
+        np.savetxt(tofhistname,np.column_stack((b[:-1],h)),fmt='%i')
+
+        #histname = '%s/ascii/Argon_port_%i.hist.dat'%(datadir,portnum)
+        enhistname = '%s/ascii/Argon_port_%i.enhist.dat'%(datadir,portnum)
+        h,b = np.histogram(en,np.arange(2**12))
+        np.savetxt(enhistname,np.column_stack((b[:-1],h)),fmt='%i')
+        #tofname = '%s/ascii/Argon_port_%i.tof.dat'%(datadir,portnum)
+        #dokname = '%s/ascii/Argon_port_%i.dok.dat'%(datadir,portnum)
+        #vlsname = '%s/ascii/Argon_port_%i.vls.dat'%(datadir,portnum)
+
+        #np.savetxt(vlsname,vlsmean,fmt='%.2f')
+        #h= tofhist_csr.toarray()
+        #np.savetxt(histname,h,fmt='%i')
+        #np.savetxt(tofname,np.sum(h,axis=1),fmt='%i')
+        #e= enhist_csr.toarray()
+        #np.savetxt(enhistname,e,fmt='%i')
+        #f = open(dokname,'w')
+        #tofhist_dok = tofhist_csr.todok()
+        #for key in tofhist_dok.keys():
+        #    print('%i\t%i\t%i'%(key[0],key[1],tofhist_dok[key] ),file=f)
+        #f.close()
+        print('processed port %i'%portnum)
     return
 
 

@@ -4,12 +4,7 @@ import h5py
 import numpy as np
 import sys
 
-from utils import mypoly
-
-def fitcalib(x,y,order=3):
-    x0 = np.mean(np.array(x))
-    theta = np.linalg.pinv( mypoly(np.array(x-x0).astype(float),order=order) ).dot(np.array(y).astype(float)) # fit a polynomial (order 3) to the points
-    return x0,theta
+from utils import mypoly,fitpoly
 
 def main():
     if len(sys.argv)<2:
@@ -27,7 +22,7 @@ def main():
                 energies[port] += [np.log2(float(v)) for v in f[key][port]['energies'][()]]
         for key in f.keys():
             for port in indices.keys():
-                x0,theta=fitcalib(indices[port],energies[port],order=2)
+                x0,theta=fitpoly(indices[port],energies[port],order=2)
                 f[key][port].attrs['x0'] = x0
                 f[key][port].attrs['theta'] = theta
                 if key == 'vret_50':
