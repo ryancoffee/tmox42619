@@ -132,7 +132,7 @@ def processmultitofs_log(fnames,calibfname,portnum):
 
         tof = data['port_%i'%portnum]['tofs']
         tofslope = data['port_%i'%portnum]['slopes']
-        t0 = 0.5*attrs['port_%i'%portnum]['t0'] 
+        t0 = attrs['port_%i'%portnum]['t0'] 
         print('port_%i\tt0 = %i'%(portnum,t0))
         
         tofaddresses = data['port_%i'%portnum]['addresses']
@@ -140,7 +140,7 @@ def processmultitofs_log(fnames,calibfname,portnum):
 
         for i in range(len(tofnedges)):
             if tofnedges[i] > 0:
-                tmpt = tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ] -t0
+                tmpt = (tof[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ])/2. -t0 # OK, this is getting silling with all the scaling
                 tmpslope = tofslope[ int(tofaddresses[i]):int(tofaddresses[i]+tofnedges[i]) ]
                 if len(tmpt)==len(tmpslope):
                     toflist = []
