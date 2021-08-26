@@ -85,7 +85,7 @@ def dctLogic(s,inflate=4):
 	sz = s.shape[0]
 	wave = np.append(s,np.flip(s,axis=0))
 	WAVE = dct(wave)
-	WAVE = rollon(WAVE,10)
+	#WAVE = rollon(WAVE,4)
 	if inflate>1:
 		WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0])) # adding zeros to the end of the transfored vector
 	DWAVE = np.copy(WAVE) # preparing to also make a derivative
@@ -96,7 +96,7 @@ def scanedges(d,minthresh,expand=4):
 	tofs = []
 	slopes = []
 	sz = d.shape[0]
-	newtloops = 4
+	newtloops = 3
 	order = 3
 	i = 1
 	while i < sz-10:
@@ -120,7 +120,7 @@ def scanedges(d,minthresh,expand=4):
 		for j in range(newtloops): # 3 rounds of Newton-Raphson
 			X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 			x0 -= theta.dot(X0)/theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]) # this seems like maybe it should be wrong
-		tofs += [np.uint64(start + x0)] ###### CAREFUL  THIS IS NEW!  (4 am idea)... expand here is further subdividing the infated indices beacaus of Newton-Raphson.
+		tofs += [np.uint64(expand*start + x0)] ###### CAREFUL  THIS IS NEW!  (4 am idea)... expand here is further subdividing the infated indices beacaus of Newton-Raphson.
 		X0 = np.array([np.power(x0,int(i)) for i in range(order+1)])
 		#slopes += [np.int64(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
 		slopes += [np.uint64((theta[1]+x0*theta[2])/2**18)] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
@@ -242,7 +242,7 @@ def main():
 	ebunch = Ebeam()
 	port = {} 
 	scale = 4
-	inflate = 8 # this determines the oversampling
+	inflate = 1 # this determines the oversampling
 	for key in logicthresh.keys():
 		logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
@@ -320,7 +320,7 @@ def main():
 				print(eventnum)
 			eventnum += 1
 
-		f = h5py.File('%s/hits.%s.run%i.hires.h5'%(scratchdir,expname,runnum),'w') 
+		f = h5py.File('%s/hits.%s.run%i.nr_expand4.h5'%(scratchdir,expname,runnum),'w') 
                 # use f.create_group('port_%i'%i,portnum)
 		#_ = [print(key,chans[key]) for key in chans.keys()]
 		for key in chans.keys(): # remember key == port number
