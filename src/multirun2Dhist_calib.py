@@ -6,7 +6,7 @@ import sys
 from scipy.interpolate import interp1d 
 from scipy.sparse import coo_matrix,csr_matrix
 import re
-from utils import mypoly,fitpoly
+from utils import mypoly,fitpoly,getcentroid
 
 def logt2e(lt,coeffs,x0):
     if lt<1.:
@@ -14,14 +14,6 @@ def logt2e(lt,coeffs,x0):
     x = np.array([(np.log(float(lt))-x0)**i for i in range(4)])
     return np.exp(x.dot(coeffs))
 
-def getcentroid(inds,spec):
-    x = inds
-    y = spec 
-    num = np.sum(x*y)
-    denom = np.sum(y)
-    if (denom>0):
-        return int(num/denom)
-    return 0
 
 def samplePDF(inds,csum,nsamples = 16):
     x = csum

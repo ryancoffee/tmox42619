@@ -4,6 +4,9 @@ import numpy as np
 import h5py
 import sys
 
+def hello():
+    print('hello')
+    return
 
 def main():
     fname = 'test.h5'
