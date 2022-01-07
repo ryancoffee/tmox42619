@@ -1,0 +1,37 @@
+#!/usr/bin/python3
+
+import numpy as np
+import h5py
+from scipy.fft import dct,dst,idct,idst
+
+def gauss(x,xc,w):
+    y = np.exp(-np.power((x-xc)/w,int(2)))
+    return y
+
+def deriv(s):
+    SC = dct(np.concatenate((s,np.flip(s,axis=0))) )
+    SS = dst(np.concatenate((s,-1*np.flip(s,axis=0))) )
+    sc_back = idst( f*SC )
+
+    return ds
+
+def main():
+    rng = np.random.default_rng(int(1024)) # fixed seed for repeatability
+    totlen = int(2**16)
+    seclen = int(2**8)
+    t = np.arange(totlen,dtype=float)/float(seclen)
+    s = np.zeros(totlen,dtype=float)
+    nrandpeaks = rng.poisson(1*totlen//seclen)
+    centers = rng.random(nrandpeaks)*float(totlen/seclen)
+    widths = rng.poisson(20,nrandpeaks)/float(seclen)
+    for i in range(nrandpeaks):
+        s += gauss(t,float(centers[i]),float(widths[i]))
+    S = dct(s)
+    DS = S*np.arange(totlen,dtype=float)
+    sback = idct(S)
+    dsback = idst(DS)*float(seclen)/totlen
+    np.savetxt('dcttest.dat',np.column_stack((t,s,sback,dsback)),fmt='%.3f')
+    return
+
+if __name__ == '__main__':
+    main()
