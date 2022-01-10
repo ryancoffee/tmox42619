@@ -22,7 +22,7 @@ def sinsqfilt(x):
 def thereandback(sig):
     s = sinsqfilt(sig)
     c = cossqfilt(sig)
-    c = np.roll(c,-8)
+    c = np.roll(c,-16)
     #smean = np.mean(s)
     #cmean = np.mean(c)
     #s -= smean
@@ -31,13 +31,13 @@ def thereandback(sig):
     C = np.concatenate((dct(np.concatenate((c,np.flip(c,axis=0))),type=1), np.zeros(len(c)*6)))
     sback = dct(S,type=1)
     cback = dct(C,type=1)
-    cback = np.roll(cback,32)
+    cback = np.roll(cback,64)
     #SS = dct(np.concatenate((s,-1*np.flip(s,axis=0))),type=1)
     #sc = dst(SC,type=1)/len(SC)*np.power(2/math.pi,3./2)
     #ss = dst(SS,type=1)/len(SC)*np.power(2/math.pi,3./2)
     #sback += smean
     #cback += cmean
-    return sback[:len(S)//4],cback[:len(S)//4],sinsqfilt(np.ones(len(S)//4)),cossqfilt(np.ones(len(S)//4))
+    return cback[:len(S)//2],sback[:len(S)//2],cossqfilt(np.ones(len(sig))),sinsqfilt(np.ones(len(sig)))
 
 def deriv(s):
     s0 = s[0]
@@ -71,8 +71,10 @@ def main():
         s += gauss(t,float(centers[i]),float(widths[i]))
     ds = deriv(s)
     sback = np.cumsum(ds,axis=0)/math.sqrt(totlen)
-    sc,ss,sq,cq = thereandback(s)
-    np.savetxt('dcttest.dat',np.column_stack((np.concatenate((t,t+t[1]+t[-1])),np.concatenate((s,np.flip(s,axis=0))),ds,sback,sc,ss,sq,cq)),fmt='%.3f')
+    sc,ss,cq,sq = thereandback(s)
+    np.savetxt('dcttest.orig',np.column_stack((t,s)),fmt='%.3f')
+    np.savetxt('dcttest.res',np.column_stack((sc,ss)),fmt='%.3f')
+    np.savetxt('dcttest.masks',np.column_stack((cq,sq)),fmt='%.3f')
     return
 
 if __name__ == '__main__':
