@@ -12,6 +12,19 @@ def getlogistic(x0,r,tol=0.0000001):
             return x
     return x
 
+def getlogistic2d(x0,y0,r,c):
+    tol = min(np.finfo(x0).resolution,np.finfo(y0).resolution)
+    x = np.copy(x0)
+    y = np.copy(y0)
+    for i in range(2**8):
+        xprev = np.copy(x)
+        yprev = np.copy(y)
+        x = (1-c)*xprev + (c)*yprev
+        y = (1-c)*yprev + (c)*xprev
+        if np.abs(x-xprev)<tol && np.abs(y-yprev)<tol:
+            return x,y
+    return x,y
+
 def main():
     if len(sys.argv)<5:
         print('Give me the number of bins and then the range you want low' )
