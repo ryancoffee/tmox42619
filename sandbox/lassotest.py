@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 
 
-from scipy.fftpack import dct, idct
+from scipy.fftpack import dct
 from sklearn.linear_model import Lasso
-import scipy.fftpack as spfft
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -22,24 +21,31 @@ def genImage(nc=5,nx=32,ny=32):
   ycenters = rng.uniform(low=0.,high=float(ny),size=nc)
   xwidths = rng.poisson(2.,size=nc)+0.5
   ywidths = rng.poisson(3.,size=nc)+0.5
-  X = np.zeros((nx,ny),dtype=float)
+  X = np.ones((nx,ny),dtype=int)
   #print(xcenters,ycenters,xwidths,ywidths)
   for i in range(nc):
-    X = X + gauss(xcenters[i],ycenters[i],xwidths[i],ywidths[i],nx,ny) + 1.
+    X = X + (2**4*gauss(xcenters[i],ycenters[i],xwidths[i],ywidths[i],nx,ny)).astype(int)
   return X
 
-def idct2(x):
-  return spfft.idct(spfft.idct(x.T, norm='ortho', axis=0).T, norm='ortho', axis=0)
+def dct_2d(x):
+    return(dct(dct(x,axis=0,type=2),axis=1,type=2))
 
-def idct2_rnc(x):
-  return spfft.idct(spfft.idct(x, axis=0),axis=1)
-
+def idct_2d(x):
+  return dct(dct(x,axis=0,type=3), axis=1,type=3)/4/((x.shape[0]*x.shape[1]))
 
 def main():
     alphalist = [0.1, 0.05, 0.025, 0.01, 0.005, 0.0025, 0.001]
-    nx=ny=16
-    X = genImage(nc=4,nx=nx,ny=ny)
+    nx=ny=32
+    X = genImage(nc=8,nx=nx,ny=ny)
     k = round(nx * ny * 0.5) # 50% sample
+    np.savetxt('testImg.dat',X,fmt='%i')
+    Y = dct_2d(X)
+    Y00 = Y[0][0]
+    Y[0,0] = 0
+    np.savetxt('testImg_dct.dat',Y,fmt='%i')
+    np.savetxt('testImg_idct.dat',idct_2d(Y),fmt='%i')
+    return
+'''
     ri = np.random.choice(nx * ny, k, replace=False) # random sample of indices
     print(X)
     #b = X.T.flat[ri]
@@ -62,7 +68,6 @@ def main():
     # Get the reconstructed image
     print(np.max(Xatlist[0]))
     Xalist = [idct2_rnc(Xat) for Xat in Xatlist]
-    fig = plt.figure()
     imlist = []
     Xatlist = []
     Xalist = []
@@ -80,6 +85,7 @@ def main():
         Xatlist[-1].imshow(Xatlist[i])
         Xalist[-1].imshow(Xalist[i])
     return
+'''
 
 if __name__ == '__main__':
     main()
