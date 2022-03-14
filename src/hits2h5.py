@@ -81,7 +81,9 @@ class Vls:
 		return self
 
 	
-def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=64,stride=32):
+#def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=256,stride=128):
+
+def dctLogic(s,inflate=1,nrolloff=128):
 	result = np.zeros(s.shape,dtype=np.float32)
 	if nrolloff>winsz:
 		print('rolloff larger than windowed signal vec')
@@ -90,24 +92,45 @@ def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=64,stride=32):
 		print('rolloff is non-zero... dont bother with that')
 		return result
 	
-
-	
-	
+	rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))
+	sz_roll = rolloff_vec.shape[0] 
+	sz = s.shape[0]
+	Yc = np.append(s,np.flip(s,axis=0))
+	Ys = np.append(s,np.flip(s,axis=0))
+	Yc[-sz_roll:] *= rolloff_vec
+	Ys[-sz_roll:] *= rolloff_vec
+	if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
+		Yc = np.append(Yc,np.zeros((inflate-1)*Yc.shape[0])) # adding zeros to the end of the transfored vector
+		Ys = np.append(Ys,np.zeros((inflate-1)*Ys.shape[0])) # adding zeros to the end of the transfored vector
+	DYc = np.copy(Yc)
+	DYs = np.copy(Ys)
+	DYc[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
+	DYs[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
+	dys = dst(DYc,type=3)[:inflate*sz]/(4*sz**2)
+	dyc = dct(DYs,type=3)[:inflate*sz]/(4*sz**2)
+	dy = (dyc-dys)
+	dy[:-1] /= np.cos(np.pi*np.arange(inflate*sz)/2.)[:-1]
+	y = dct(Yc,type=3)[:inflate*sz]
+	result = y*dy	# constructing the sig*deriv waveform 
 	return result
 
+'''
 def dctLogic(s,inflate=1,nrolloff=128):
 	rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))
 	sz_roll = rolloff_vec.shape[0] 
 	sz = s.shape[0]
 	wave = np.append(s,np.flip(s,axis=0))
-	WAVE = dct(wave)
+	WAVE = dct(wave,type=2)
+	#WAVE = dct(wave)
 	#WAVE = rollon(WAVE,4)
 	WAVE[-sz_roll:] *= rolloff_vec
 	if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
 		WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0])) # adding zeros to the end of the transfored vector
 	DWAVE = np.copy(WAVE) # preparing to also make a derivative
 	DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
-	return idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
+	return dct(WAVE,type=3)[:inflate*sz]*dct(DWAVE,type=4)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
+	#return idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
+'''
 
 def scanedges_simple(d,minthresh,expand=1):
 	tofs = []
