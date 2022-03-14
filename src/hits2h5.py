@@ -81,6 +81,20 @@ class Vls:
 		return self
 
 	
+def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=64,stride=32):
+	result = np.zeros(s.shape,dtype=np.float32)
+	if nrolloff>winsz:
+		print('rolloff larger than windowed signal vec')
+		return result
+	if nrolloff!=0:
+		print('rolloff is non-zero... dont bother with that')
+		return result
+	
+
+	
+	
+	return result
+
 def dctLogic(s,inflate=1,nrolloff=128):
 	rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))
 	sz_roll = rolloff_vec.shape[0] 
