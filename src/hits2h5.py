@@ -325,6 +325,7 @@ def main():
 		eventnum = 0
 		runhsd=True
 		runvls=False
+		runebeam=False
 		hsd = run.Detector('hsd')
 		vls = run.Detector('andor')
 		ebeam = run.Detector('ebeam')
@@ -339,78 +340,93 @@ def main():
 		init = True 
 		vsize = 0
 
+		print(run.events())
+		print(chans)
 		for evt in run.events():
 			if eventnum > nshots:
 				break
 
-			''' VLS specific section, do this first to slice only good shots '''
-			try:
-				vlswv = np.squeeze(vls.raw.value(evt))
-				vlswv = vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
-				if np.max(vlswv)<300:  # too little amount of xrays
-					print(eventnum,'skip per weak vls')
-					eventnum += 1
+			if runvls:
+				''' VLS specific section, do this first to slice only good shots '''
+				try:
+					vlswv = np.squeeze(vls.raw.value(evt))
+					vlswv = vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
+					if np.max(vlswv)<300:  # too little amount of xrays
+						print(eventnum,'skip per weak vls')
+						#eventnum += 1
+						continue
+					spect.process(vlswv)
+					#spect.print_v()
+
+				except:
+					print(eventnum,'skip per vls')
 					continue
-				spect.process(vlswv)
-				#spect.print_v()
 
-			except:
-				print(eventnum,'skip per vls')
+			if runebeam:
+				''' Ebeam specific section '''
+				try:
+					thisl3 = ebeam.raw.ebeamL3Energy(evt)
+					thisl3 += 0.5
+					ebunch.process(thisl3)
+				except:
+					print(eventnum,'skipping ebeam, skip per l3')
+					continue
+
+			if runhsd:
+	
+				''' HSD-Abaco section '''
+				print(hsd.raw.waveforms(evt))
+				for key in chans.keys(): # here key means 'port number'
+					try:
+						s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=float) 
+						print('processing hsd')
+						port[key].process(s)
+
+						if init:
+							init = False
+							ebunch.set_initState(False)
+							spect.set_initState(False)
+							for key in chans.keys():
+								port[key].set_initState(False)
+					except:
+						print(eventnum, 'failed hsd for some reason')
+						continue
+
+				if eventnum%10<2: 
+					print(eventnum)
 				eventnum += 1
-				continue
 
-			''' Ebeam specific section '''
-			try:
-				thisl3 = ebeam.raw.ebeamL3Energy(evt)
-				thisl3 += 0.5
-				ebunch.process(thisl3)
-			except:
-				print(eventnum,'skip per l3')
-				eventnum += 1
-				continue
-
-
-			''' HSD-Abaco section '''
-			for key in chans.keys(): # here key means 'port number'
-				s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=float) 
-				port[key].process(s)
-
-			if init==True:
-				init = False
-				ebunch.set_initState(False)
-				spect.set_initState(False)
-				for key in chans.keys():
-					port[key].set_initState(False)
-
-			if eventnum%50==0: 
-				print(eventnum)
-			eventnum += 1
+		print('!!!!!!!! not saving h5 files')
+		break
 
 		f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') 
                 # use f.create_group('port_%i'%i,portnum)
 		#_ = [print(key,chans[key]) for key in chans.keys()]
-		for key in chans.keys(): # remember key == port number
-			g = f.create_group('port_%i'%(key))
-			g.create_dataset('tofs',data=port[key].tofs,dtype=float) 
-			g.create_dataset('slopes',data=port[key].slopes,dtype=float) 
-			g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
-			g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
-			wvgrp = g.create_group('waves')
-			for k in port[key].waves.keys():
-				wvgrp.create_dataset(k,data=port[key].waves[k],dtype=float)
-			g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
-			g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
-			g.attrs.create('t0',data=port[key].t0,dtype=float)
-			g.attrs.create('slopethresh',data=port[key].slopethresh,dtype=np.uint64)
-			g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-			g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
-		grpvls = f.create_group('vls')
-		grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
-		grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
-		grpvls.create_dataset('sum',data=spect.vs,dtype=np.uint64)
-		grpvls.attrs.create('size',data=spect.vsize,dtype=np.int32)
-		grpebeam = f.create_group('ebeam')
-		grpebeam.create_dataset('l3energy',data=ebunch.l3,dtype=np.uint16)
+		if runhsd:
+			for key in chans.keys(): # remember key == port number
+				g = f.create_group('port_%i'%(key))
+				g.create_dataset('tofs',data=port[key].tofs,dtype=float) 
+				g.create_dataset('slopes',data=port[key].slopes,dtype=float) 
+				g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
+				g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
+				wvgrp = g.create_group('waves')
+				for k in port[key].waves.keys():
+					wvgrp.create_dataset(k,data=port[key].waves[k],dtype=float)
+				g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
+				g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
+				g.attrs.create('t0',data=port[key].t0,dtype=float)
+				g.attrs.create('slopethresh',data=port[key].slopethresh,dtype=np.uint64)
+				g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
+				g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
+		if runvls:
+			grpvls = f.create_group('vls')
+			grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
+			grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
+			grpvls.create_dataset('sum',data=spect.vs,dtype=np.uint64)
+			grpvls.attrs.create('size',data=spect.vsize,dtype=np.int32)
+		if runebeam:
+			grpebeam = f.create_group('ebeam')
+			grpebeam.create_dataset('l3energy',data=ebunch.l3,dtype=np.uint16)
 		f.close()
 
 	print("Hello, I'm done now!")
