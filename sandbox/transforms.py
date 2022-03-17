@@ -15,9 +15,9 @@ def dctmat(sz):
 def dstmat(sz):
     return 2*dst( np.identity(2*sz),axis=1 , type=2)[1::2].T
 def idctmat(sz):
-    return 2*dct( np.identity(2*sz),axis=1 , type=3)[::2].T
+    return 1./2*dct( np.identity(2*sz),axis=0 , type=3)[::2].T
 def idstmat(sz):
-    return 2*dst( np.identity(2*sz),axis=1 , type=3)[1::2].T
+    return 1./2*dst( np.identity(2*sz),axis=0 , type=3)[1::2].T
 
 def mydct(cmat,x):
     xin = np.append(x[::2],x[-1::-2])
@@ -33,7 +33,7 @@ def myidct(Cmat,x):
     xout = np.zeros(sz)
     xout[::2]=res[:sz//2]
     xout[1::2]=res[-1:-sz//2-1:-1]
-    return xout
+    return xout.astype(int)//32
 
 def myidst(Smat,x):
     res = np.inner(Smat,x)
@@ -60,7 +60,17 @@ def main():
     print('mydst:')
     print(mydst(s,x))
     print(dst(x_anti)[1::2])
-    print(myidct(C,mydct(c,x)))
+    print('myidct(C,mydct(c,x)')
+    show(myidct(C,mydct(c,x)).astype(int)//16)
+    print(myidct(C,mydct(c,x)).astype(int))
+    print('\n'*10)
+    print( (100*(2*sz)*np.linalg.pinv((dct(np.identity(2*sz),type=2)))[:,0::2]).astype(int) )
+    print( (100*0.50*dct(np.identity(2*sz),type=3)[:,::2]).astype(int) )
+    print( (np.inner(C.T,np.inner(c,x)).astype(int)//32 ) )
+    print(x)
+    print( (np.inner(S.T,np.inner(s,x)).astype(int)//32 ) )
+    print( (myidct(C,mydct(c,x)).astype(int) ) )
+
     return
 
 if __name__ == '__main__':
