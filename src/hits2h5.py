@@ -15,7 +15,7 @@ import psana
 import numpy as np
 import sys
 import h5py
-from scipy.fftpack import dct,idct,idst
+from scipy.fftpack import dct,dst
 
 from utils import mypoly
 
@@ -26,7 +26,7 @@ def rollon(vec,n):
     vec[:int(n)] = vec[:int(n)]*np.arange(int(n),dtype=float)/float(n)
     return vec
 
-
+rng = np.random.default_rng()
 
 ###########################################
 ########### Class definitions #############
@@ -83,6 +83,35 @@ class Vls:
     
 #def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=256,stride=128):
 
+def dctLogicInt(s,inflate=1,nrolloff=128):
+    result = np.zeros(s.shape,dtype=np.int32)
+    ampscale = 2**8
+    rolloff_vec = (ampscale*(1.+np.cos(np.arange(nrolloff,dtype=np.int32)*np.pi/float(nrolloff)))).astype(np.int32)
+    sz_roll = rolloff_vec.shape[0] 
+    sz = s.shape[0]
+    sc = np.append(s,np.flip(s,axis=0)).astype(np.int32)
+    ss = np.append(s,np.flip(-1*s,axis=0)).astype(np.int32)
+    wc = dct(sc,type=2,axis=0).astype(np.int32)
+    ws = dst(sc,type=2,axis=0).astype(np.int32)
+    wc[-sz_roll:] *= rolloff_vec
+    ws[-sz_roll:] *= rolloff_vec
+    wc[:-sz_roll] *= ampscale # scaling since we are keeping to int32
+    ws[:-sz_roll] *= ampscale
+    if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
+        wc = np.append(wc,np.zeros((inflate-1)*wc.shape[0],dtype=np.int32)) # adding zeros to the end of the transfored vector
+        ws = np.append(ws,np.zeros((inflate-1)*ws.shape[0],dtype=np.int32)) # adding zeros to the end of the transfored vector
+    Dwc = np.copy(wc)
+    Dws = np.copy(ws)
+    Dwc[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int32) # producing the transform of the derivative
+    Dws[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int32) # producing the transform of the derivative
+    dss = (dst(Dwc,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int32)
+    dsc = (dct(Dws,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int32)
+    dy = (dsc-dss)
+    #dy[:-1] /= np.cos(np.pi*np.arange(inflate*sz)/2.)[:-1]
+    y = (dct(wc,type=3,axis=0)[:inflate*sz]//(4*sz)).astype(np.int32)
+    result = y*dy   # constructing the sig*deriv waveform 
+    return result
+
 def dctLogic(s,inflate=1,nrolloff=128):
     result = np.zeros(s.shape,dtype=np.float32)
     if nrolloff>winsz:
@@ -95,8 +124,8 @@ def dctLogic(s,inflate=1,nrolloff=128):
     rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))
     sz_roll = rolloff_vec.shape[0] 
     sz = s.shape[0]
-    Yc = np.append(s,np.flip(s,axis=0))
-    Ys = np.append(s,np.flip(s,axis=0))
+    Yc = dct(np.append(s,np.flip(s,axis=0)),type=2)
+    Ys = dst(np.append(s,np.flip(s,axis=0)),type=2)
     Yc[-sz_roll:] *= rolloff_vec
     Ys[-sz_roll:] *= rolloff_vec
     if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
@@ -129,8 +158,9 @@ def dctLogic(s,inflate=1,nrolloff=128):
     DWAVE = np.copy(WAVE) # preparing to also make a derivative
     DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
     return dct(WAVE,type=3)[:inflate*sz]*dct(DWAVE,type=4)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
-    #return idct(WAVE)[:inflate*sz]*idst(DWAVE)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
+    #return dct(WAVE,type=3)[:inflate*sz]*dst(DWAVE,type=3)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
 '''
+
 
 def scanedges_simple(d,minthresh,expand=1):
     tofs = []
@@ -143,12 +173,12 @@ def scanedges_simple(d,minthresh,expand=1):
             if i==sz-10: return tofs,slopes,len(tofs)
         while i<sz-10 and d[i]<0:
             i += 1
-        start = i-1
         stop = i
-        x0 = start - float(stop-start)/float(d[stop]-d[start])*d[start]
+        x0 = stop - 1./float(d[stop]-d[stop-1])*d[stop] 
         i += 1
-        tofs += [expand*float(x0)] 
-        slopes += [float(d[stop]-d[start])/float(stop-start)] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
+        v = expand*float(x0)
+        tofs += [np.int32(v) + np.int32(rng.random()<v%1)] 
+        slopes += [d[stop]-d[stop-1]] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
     return tofs,slopes,len(tofs)
 
 def scanedges(d,minthresh,expand=4):
@@ -214,18 +244,15 @@ class Port:
         self.shot = int(0)
 
     def process(self,s):
-        print('Am I happy?')
         if type(s) == type(None):
             e = []
             de = []
             ne = 0
         else:
-            print('... not yet...')
             for adc in range(self.nadcs):
                 b = np.mean(s[adc:self.baselim+adc:self.nadcs])
                 s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale) - int(self.scale*b)
-            print('baseline removed:',s[:10])
-            logic = dctLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
+            logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
             if len(self.addresses)%100 == 0:
                 self.waves.update( {'shot_%i'%len(self.addresses):np.copy(logic)} )
             e,de,ne = scanedges_simple(logic,self.logicthresh,self.expand) # scan the logic vector for hits
@@ -243,7 +270,6 @@ class Port:
                 self.nedges = [int(ne)]
                 self.tofs += e
                 self.slopes += de
-                print('... still not yet...')
         else:
             if ne<1:
                 self.addresses += [int(0)]
@@ -255,7 +281,6 @@ class Port:
                 self.nedges += [int(ne)]
                 self.tofs += e
                 self.slopes += de
-        print('I\'m happy!')
         return self
 
     def set_initState(self,state=True):
@@ -271,7 +296,8 @@ def main():
         ############################################
         ###### Change this to your output dir ######
         ############################################
-    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
+    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
+    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files'
     expname = 'tmox42619'
     runnum = 62 
     nshots = 100
@@ -285,7 +311,7 @@ def main():
     print('starting analysis exp %s for run %i'%(expname,int(runnum)))
     nr_expand = 4 
     chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
-    logicthresh = {0:-1000, 1:-1000, 2:-500, 4:-1000, 5:-1000, 12:-1000, 13:-1000, 14:-1000, 15:-1000, 16:-500}
+    logicthresh = {0:-800000, 1:-800000, 2:-400000, 4:-800000, 5:-800000, 12:-800000, 13:-800000, 14:-800000, 15:-800000, 16:-400000}
     #slopethresh = {0:500,1:500,2:300,4:150,5:500,12:500,13:500,14:500,15:500,16:300}
     slopethresh = {0:100,1:100,2:60,4:100,5:100,12:100,13:100,14:100,15:100,16:60}
     #t0s = {0:109840,1:100456,2:99924,4:97180,5:99072,12:98580,13:98676,14:100348,15:106968,16:98028}
@@ -310,7 +336,7 @@ def main():
     spect = Vls()
     ebunch = Ebeam()
     port = {} 
-    scale = int(4) # to better fill 16 bit int
+    scale = int(1) # to better fill 16 bit int
     inflate = int(4) 
     for key in logicthresh.keys():
         logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
@@ -344,7 +370,7 @@ def main():
         vsize = 0
 
         print(run.events())
-        print(chans)
+        print('chans: ',chans)
         for evt in run.events():
             if eventnum > nshots:
                 break
@@ -381,7 +407,6 @@ def main():
                 for key in chans.keys(): # here key means 'port number'
                     try:
                         s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-                        print('min,max =\t%i,%i'%(np.min(s),np.max(s)))
                         port[key].process(s)
 
                         if init:
@@ -394,12 +419,16 @@ def main():
                         print(eventnum, 'failed hsd for some reason')
                         continue
 
-                if eventnum%10<2: 
-                    print(eventnum)
+                if eventnum<100:
+                    if eventnum%10<2: 
+                        print('working event %i'%eventnum)
+                elif eventnum<1000:
+                    if eventnum%100<2: 
+                        print('working event %i'%eventnum)
+                else:
+                    if eventnum%1000<2: 
+                        print('working event %i'%eventnum)
                 eventnum += 1
-
-        print('!!!!!!!! not saving h5 files')
-        break
 
         f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') 
                 # use f.create_group('port_%i'%i,portnum)
@@ -407,13 +436,13 @@ def main():
         if runhsd:
             for key in chans.keys(): # remember key == port number
                 g = f.create_group('port_%i'%(key))
-                g.create_dataset('tofs',data=port[key].tofs,dtype=float) 
-                g.create_dataset('slopes',data=port[key].slopes,dtype=float) 
+                g.create_dataset('tofs',data=port[key].tofs,dtype=np.int32) 
+                g.create_dataset('slopes',data=port[key].slopes,dtype=np.int32) 
                 g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
-                g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint16)
+                g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint32)
                 wvgrp = g.create_group('waves')
                 for k in port[key].waves.keys():
-                    wvgrp.create_dataset(k,data=port[key].waves[k],dtype=float)
+                    wvgrp.create_dataset(k,data=port[key].waves[k],dtype=np.int32)
                 g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
                 g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
                 g.attrs.create('t0',data=port[key].t0,dtype=float)
