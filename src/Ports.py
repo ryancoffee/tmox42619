@@ -127,14 +127,13 @@ class Port:
     # Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
     # hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-    def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-2400,slopethresh=500,scale=1,inflate=1,expand=1,nrolloff=256): # exand is for sake of Newton-Raphson
+    def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-2400,scale=1,inflate=1,expand=1,nrolloff=256): # exand is for sake of Newton-Raphson
         self.portnum = portnum
         self.hsd = hsd
         self.t0 = t0
         self.nadcs = nadcs
         self.baselim = baselim
         self.logicthresh = logicthresh
-        self.slopethresh = slopethresh
         self.initState = True
         self.scale = scale
         self.inflate = inflate
@@ -151,13 +150,16 @@ class Port:
     def addsample(self,w):
         eventnum = len(self.addresses)
         if eventnum<100:
-            if eventnum%10<2: 
+            if eventnum%10<10: 
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
         elif eventnum<1000:
-            if eventnum%100<2: 
+            if eventnum%100<10: 
+                self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
+        elif eventnum<10000:
+            if eventnum%1000<10: 
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
         else:
-            if eventnum%1000<2: 
+            if eventnum%10000<10: 
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
         return self
 
@@ -172,6 +174,7 @@ class Port:
                 s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale) - int(self.scale*b)
             logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
             e,de,ne = scanedges_simple(logic,self.logicthresh,self.expand) # scan the logic vector for hits
+            self.addsample(logic)
 
         if self.initState:
             self.sz = s.shape[0]*self.inflate*self.expand
