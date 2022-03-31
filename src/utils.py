@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
+import h5py
 
 def pkey(p):
     return 'port_%i'%p
@@ -29,3 +30,14 @@ def getcentroid(inds,spec):
     if (denom>0):
         return int(num/denom)
     return 0
+
+def makehist(fname,bins=(np.arange(2**10+1)-2**9)*2**10):
+    with h5py.File(fname,'r') as f:
+        for p in f.keys():
+            data = []
+            for k in f[p]['waves'].keys():
+                data += list(f['port_0']['waves'][k][()])
+            h,b = np.histogram(data,bins)
+            np.savetxt('histsig.%s.dat'%p,np.column_stack((b[:-1],h)),fmt='%i')
+    return
+
