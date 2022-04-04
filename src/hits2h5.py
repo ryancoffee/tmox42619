@@ -68,7 +68,7 @@ def main():
         logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
     for key in chans.keys():
-        port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=10000)
+        port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**10)
 
     ds = psana.DataSource(exp=expname,run=runnum)
 
@@ -130,29 +130,29 @@ def main():
     
                 ''' HSD-Abaco section '''
                 for key in chans.keys(): # here key means 'port number'
-                    try:
-                        s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-                        port[key].process(s)
+                    #try:
+                    s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+                    port[key].process(s)
 
-                        if init:
-                            init = False
-                            ebunch.set_initState(False)
-                            spect.set_initState(False)
-                            for key in chans.keys():
-                                port[key].set_initState(False)
-                    except:
-                        print(eventnum, 'failed hsd for some reason')
-                        continue
+                    if init:
+                        init = False
+                        ebunch.set_initState(False)
+                        spect.set_initState(False)
+                        for key in chans.keys():
+                            port[key].set_initState(False)
+                    #except:
+                     #   print(eventnum, 'failed hsd for some reason')
+                      #  continue
 
                 if eventnum<100:
                     if eventnum%10<2: 
-                        print('working event %i'%eventnum)
+                        print('working event %i, nedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
                 elif eventnum<1000:
                     if eventnum%100<2: 
-                        print('working event %i'%eventnum)
+                        print('working event %i, nedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
                 else:
                     if eventnum%1000<2: 
-                        print('working event %i'%eventnum)
+                        print('working event %i, nedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
                 eventnum += 1
 
         f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') 
@@ -166,8 +166,10 @@ def main():
                 g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
                 g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint32)
                 wvgrp = g.create_group('waves')
+                lggrp = g.create_group('logics')
                 for k in port[key].waves.keys():
-                    wvgrp.create_dataset(k,data=port[key].waves[k],dtype=np.int32)
+                    wvgrp.create_dataset(k,data=port[key].waves[k],dtype=np.int16)
+                    lggrp.create_dataset(k,data=port[key].logics[k],dtype=np.int32)
                 g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
                 g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
                 g.attrs.create('t0',data=port[key].t0,dtype=float)

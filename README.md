@@ -19,3 +19,8 @@ shots=100
 ./src/hits2h5.py ${expname} ${runnum} ${nshots}
 ```
 
+# using slurm  
+```bash
+sbatch -p psanaq --nodes 1 --ntasks-per-node 1 --wrap="./src/hits2h5.py tmox42619 23 10000"
+```
+

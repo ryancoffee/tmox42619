@@ -5,33 +5,40 @@ from utils import mypoly
 #def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=256,stride=128):
 rng = np.random.default_rng()
 
-def dctLogicInt(s,inflate=1,nrolloff=128):
-    result = np.zeros(s.shape,dtype=np.int32)
-    ampscale = 2**8
-    rolloff_vec = (ampscale*(1.+np.cos(np.arange(nrolloff,dtype=np.int32)*np.pi/float(nrolloff)))).astype(np.int32)
-    sz_roll = rolloff_vec.shape[0] 
+def dctLogicInt(s,inflate=1,nrolloff=128,nrolloff_y=2**12):
+    '''
+    Cutting off the tail of the y before back transforming and multiplying
+    This is to reduce distortion of the dy signal when suplressing noise by multiplying by signal.
+    '''
     sz = s.shape[0]
+    result = np.zeros(sz,dtype=np.int32)
+    ampscale = 2**8
+    rolloff_vec = (ampscale*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))).astype(np.int32)
+    rolloff_y = (ampscale*(1.+np.cos(np.arange(nrolloff_y,dtype=float)*np.pi/float(nrolloff_y)))).astype(np.int32)
     sc = np.append(s,np.flip(s,axis=0)).astype(np.int32)
     ss = np.append(s,np.flip(-1*s,axis=0)).astype(np.int32)
     wc = dct(sc,type=2,axis=0).astype(np.int32)
-    ws = dst(sc,type=2,axis=0).astype(np.int32)
-    wc[-sz_roll:] *= rolloff_vec
-    ws[-sz_roll:] *= rolloff_vec
-    wc[:-sz_roll] *= ampscale # scaling since we are keeping to int32
-    ws[:-sz_roll] *= ampscale
+    ws = dst(ss,type=2,axis=0).astype(np.int32)
+    wy = np.copy(wc)
+    wy[:nrolloff_y] *= rolloff_y
+    wy[nrolloff_y:] *= 0
+    wc[-nrolloff:] *= rolloff_vec
+    ws[-nrolloff:] *= rolloff_vec
+    wc[:-nrolloff] *= ampscale # scaling since we are keeping to int32
+    ws[:-nrolloff] *= ampscale
     if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
         wc = np.append(wc,np.zeros((inflate-1)*wc.shape[0],dtype=np.int32)) # adding zeros to the end of the transfored vector
         ws = np.append(ws,np.zeros((inflate-1)*ws.shape[0],dtype=np.int32)) # adding zeros to the end of the transfored vector
+        wy = np.append(wy,np.zeros((inflate-1)*wy.shape[0],dtype=np.int32)) # adding zeros to the end of the transfored vector
     Dwc = np.copy(wc)
     Dws = np.copy(ws)
-    Dwc[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int32) # producing the transform of the derivative
-    Dws[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int32) # producing the transform of the derivative
-    dss = (dst(Dwc,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int32)
-    dsc = (dct(Dws,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int32)
-    dy = (dsc-dss)
-    #dy[:-1] /= np.cos(np.pi*np.arange(inflate*sz)/2.)[:-1]
-    y = (dct(wc,type=3,axis=0)[:inflate*sz]//(4*sz)).astype(np.int32)
-    result = y*dy   # constructing the sig*deriv waveform 
+    Dwc[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
+    Dws[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
+    dsc = (dst(Dwc,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int32)
+    dcs = (dct(Dws,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int32)
+    dy = (dsc-dcs)
+    y = (dct(wy,type=3,axis=0)[:inflate*sz]//(4*sz)).astype(np.int32)
+    result = y # *dy   # constructing the sig*deriv waveform 
     return result
 
 def dctLogic(s,inflate=1,nrolloff=128):
@@ -145,22 +152,27 @@ class Port:
         self.addresses = []
         self.nedges = []
         self.waves = {}
+        self.logics = {}
         self.shot = int(0)
 
-    def addsample(self,w):
+    def addsample(self,w,l):
         eventnum = len(self.addresses)
         if eventnum<100:
             if eventnum%10<10: 
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
+                self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         elif eventnum<1000:
             if eventnum%100<10: 
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
+                self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         elif eventnum<10000:
             if eventnum%1000<10: 
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
+                self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         else:
             if eventnum%10000<10: 
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
+                self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         return self
 
     def process(self,s):
@@ -174,7 +186,7 @@ class Port:
                 s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale) - int(self.scale*b)
             logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
             e,de,ne = scanedges_simple(logic,self.logicthresh,self.expand) # scan the logic vector for hits
-            self.addsample(logic)
+            self.addsample(s,logic)
 
         if self.initState:
             self.sz = s.shape[0]*self.inflate*self.expand
@@ -210,6 +222,12 @@ class Port:
         print(self.tofs)
         print(self.slopes)
         return self
+
+    def getnedges(self):
+        if len(self.nedges)==0:
+            return 0
+        return self.nedges[-1]
+
 
 
 '''

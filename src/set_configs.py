@@ -5,7 +5,8 @@ import sys
 
 def main():
     chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
-    logicthresh = {0:-2000000, 1:-1500000, 2:-800000, 4:-800000, 5:-2500000, 12:-3000000, 13:-2300000, 14:-2100000, 15:-2000000, 16:-3300000} # set by knee (log-log) in val histogram
+    # second knee # logicthresh = {0:-2000000, 1:-1500000, 2:-800000, 4:-800000, 5:-2500000, 12:-3000000, 13:-2300000, 14:-2100000, 15:-2000000, 16:-3300000} # set by knee (log-log) in val histogram
+    logicthresh = {0:-1000000, 1:-1000000, 2:-1500000, 4:-1000000, 5:-2000000, 12:-2000000, 13:-2330000, 14:-2000000, 15:-1000000, 16:-3250000} # set by 1st knee (log-log) in val histogram
     t0s = {0:73246,1:67008,2:68300,4:64922,5:66075,12:65762,13:65827,14:66906,15:71400,16:65391} # based on latest in repo ryan-dev (inflate=4 nr_expand=4)
     # Ideally we would measure the logicthresh knee for different delay windows, as the low energy hits might have lower carrier cascade in MCPs
 
