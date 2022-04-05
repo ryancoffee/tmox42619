@@ -1,44 +1,39 @@
 import numpy as np
 from scipy.fftpack import dct,dst
-from utils import mypoly
+from utils import mypoly,tanhInt
     
 #def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=256,stride=128):
 rng = np.random.default_rng()
 
-def dctLogicInt(s,inflate=1,nrolloff=128,nrolloff_y=2**12):
+def dctLogicInt(s,inflate=1,nrolloff=128):
     '''
     Cutting off the tail of the y before back transforming and multiplying
     This is to reduce distortion of the dy signal when suplressing noise by multiplying by signal.
     '''
     sz = s.shape[0]
-    result = np.zeros(sz,dtype=np.int32)
+    result = np.zeros(sz*inflate,dtype=np.int32)
     ampscale = 2**8
     rolloff_vec = (ampscale*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))).astype(np.int32)
-    rolloff_y = (ampscale*(1.+np.cos(np.arange(nrolloff_y,dtype=float)*np.pi/float(nrolloff_y)))).astype(np.int32)
     sc = np.append(s,np.flip(s,axis=0)).astype(np.int32)
     ss = np.append(s,np.flip(-1*s,axis=0)).astype(np.int32)
-    wc = dct(sc,type=2,axis=0).astype(np.int32)
-    ws = dst(ss,type=2,axis=0).astype(np.int32)
-    wy = np.copy(wc)
-    wy[:nrolloff_y] *= rolloff_y
-    wy[nrolloff_y:] *= 0
+    wc = dct(sc,type=2,axis=0).astype(np.int64)
+    ws = dst(ss,type=2,axis=0).astype(np.int64)
     wc[-nrolloff:] *= rolloff_vec
     ws[-nrolloff:] *= rolloff_vec
     wc[:-nrolloff] *= ampscale # scaling since we are keeping to int32
     ws[:-nrolloff] *= ampscale
+    wy = np.copy(wc)
     if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
-        wc = np.append(wc,np.zeros((inflate-1)*wc.shape[0],dtype=np.int32)) # adding zeros to the end of the transfored vector
-        ws = np.append(ws,np.zeros((inflate-1)*ws.shape[0],dtype=np.int32)) # adding zeros to the end of the transfored vector
-        wy = np.append(wy,np.zeros((inflate-1)*wy.shape[0],dtype=np.int32)) # adding zeros to the end of the transfored vector
-    Dwc = np.copy(wc)
-    Dws = np.copy(ws)
-    Dwc[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
-    Dws[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
-    dsc = (dst(Dwc,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int32)
-    dcs = (dct(Dws,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int32)
-    dy = (dsc-dcs)
-    y = (dct(wy,type=3,axis=0)[:inflate*sz]//(4*sz)).astype(np.int32)
-    result = y # *dy   # constructing the sig*deriv waveform 
+        wc = np.append(wc,np.zeros((inflate-1)*wc.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
+        ws = np.append(ws,np.zeros((inflate-1)*ws.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
+        wy = np.append(wy,np.zeros((inflate-1)*wy.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
+    wc[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
+    ws[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
+    dsc = (dst(wc,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int64)
+    dcs = (dct(ws,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int64)
+    dy = (dcs-dsc)
+    y = (dct(wy,type=3,axis=0)[:inflate*sz]//(4*sz)).astype(np.int64)
+    result = dy*tanhInt(-y,bits=8)   # constructing the logic waveform 
     return result
 
 def dctLogic(s,inflate=1,nrolloff=128):
