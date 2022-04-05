@@ -46,3 +46,15 @@ def makehist(fname,bins=(np.arange(2**10+1)-2**9)*2**10):
             np.savetxt('histsig.%s.dat'%p,np.column_stack((b[:-1],h)),fmt='%i')
     return
 
+def samples3ascii(ipath,fname,opath):
+    logics={}
+    waves={}
+    with h5py.File('%s/%s'%(ipath,fname),'r') as f:
+        for p in f.keys(): 
+            logics[p] = np.stack([f[p]['logics'][k][()] for k in f[p]['logics'].keys()],axis=-1)
+        for p in f.keys(): 
+            waves[p] = np.stack([f[p]['waves'][k][()] for k in f[p]['waves'].keys()],axis=-1)
+        _=[np.savetxt('%s/%s.logics.%s.dat'%(opath,fname,p),logics[p],fmt='%i') for p in logics.keys()]
+        _=[np.savetxt('%s/%s.waves.%s.dat'%(opath,fname,p),waves[p],fmt='%i') for p in waves.keys()]
+    return
+
