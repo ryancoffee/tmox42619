@@ -2,7 +2,12 @@
 
 import numpy as np
 import h5py
+from scipy import tanh
+import math
 
+def tanhInt(x,bits):
+    y = 2**(bits-1)*(1+tanh(x.astype(float)))
+    return y.astype(type(x[0]))
 def pkey(p):
     return 'port_%i'%p
 

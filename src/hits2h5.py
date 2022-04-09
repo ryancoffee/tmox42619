@@ -21,18 +21,18 @@ def rollon(vec,n):
     return vec
 
 def fillconfigs(cfgname):
-    chans = {}
-    t0s = {}
-    logicthresh = {}
+    params = {'chans':{},'t0s':{},'logicthresh':{}}
     with h5py.File(cfgname,'r') as f:
+        params['inflate'] = f.attrs['inflate']
+        params['expand'] = f.attrs['expand']
         for p in f.keys():
             m = re.search('^\w+_(\d+)$',p)
             if m:
                 k = int(m.group(1))
-                chans[k] = f[p].attrs['hsd']
-                t0s[k] = f[p].attrs['t0']
-                logicthresh[k] = f[p].attrs['logicthresh']
-    return (chans,t0s,logicthresh)
+                params['chans'][k] = f[p].attrs['hsd']
+                params['t0s'][k] = f[p].attrs['t0']
+                params['logicthresh'][k] = f[p].attrs['logicthresh']
+    return params
 
 def main():
         ############################################
@@ -52,23 +52,23 @@ def main():
 
     print('starting analysis exp %s for run %i'%(expname,int(runnum)))
     cfgname = '%s/%s.hsdconfig.h5'%(scratchdir,expname)
-    chans,t0s,logicthresh = fillconfigs(cfgname)
+    params = fillconfigs(cfgname)
+    chans = params['chans']
+    t0s = params['t0s']
+    logicthresh = params['logicthresh']
 
-    nr_expand = 4 
-    print('need to redo t0s and logicthresh\n%s\n%s'%(t0s,logicthresh))
-
-
+    nr_expand = params['expand']
 
     spect = Vls()
     ebunch = Ebeam()
     port = {} 
     scale = int(1) # to better fill 16 bit int
-    inflate = int(4) 
+    inflate = params['inflate']
     for key in logicthresh.keys():
         logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
     for key in chans.keys():
-        port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**10)
+        port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**6)
 
     ds = psana.DataSource(exp=expname,run=runnum)
 
