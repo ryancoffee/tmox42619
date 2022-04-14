@@ -16,7 +16,7 @@ def fit(xin,yin):
     params['xmean'] = xm
     params['ymean'] = ym
     params['scale'] = s
-    X = np.stack((np.ones(x.shape),s*(x-xm),np.power(2*(x-xm),int(2))),axis=-1) 
+    X = np.stack((np.ones(x.shape),s*(x-xm),np.power(s*(x-xm),int(2))),axis=-1) 
     params['theta'] = np.dot(s*(y-ym),np.linalg.pinv(X.T))
     return params
 
@@ -29,7 +29,7 @@ def transform(xin,params):
     x *= params['scale']
     X = np.stack((np.ones(x.shape),x,np.power(x,int(2))),axis=-1)
     y = np.dot(X,parmas['theta'])
-    yout = y/scale + params['ymean']
+    yout = y/params['scale'] + params['ymean']
     if params['log2']:
         return 2**yout
     return yout
@@ -55,8 +55,8 @@ def main():
                     pgrp = fitfile.create_group(p)
                 for r in f[p].keys():
                     run = f[p][r]['tofs'].attrs['run']
-
                     ret = f[p][r]['tofs'].attrs['ret']
+                    toffset = f[p][r]['tofs'].attrs['toffset']
 
                     if '%s'%ret in pgrp:
                         retgrp = pgrp['%s'%ret]
@@ -84,6 +84,7 @@ def main():
                     theta.attrs.create('scale',params['scale'])
                     theta.attrs.create('log2',params['log2'])
                     theta.attrs.create('run',run)
+                    theta.attrs.create('toffset',toffset)
 
                     print(params)
 

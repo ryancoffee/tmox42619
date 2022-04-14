@@ -13,6 +13,7 @@ def fillTofs(f,port,ret,run,phen,ens,tofs):
     d.attrs.create('run',data = run,dtype=np.uint16)
     d.attrs.create('phEn',data = phen,dtype=np.uint16)
     d.attrs.create('ret',data = ret,dtype=np.uint16)
+    d.attrs.create('toffset',data = 2**15,dtype=np.uint16) # damnit, toffset is that the tofs result has a minumum value that is always larger than 2**15, so I subtracted that off when I did the peak locations.
     return f
 
 def main():
