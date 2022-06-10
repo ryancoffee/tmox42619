@@ -105,7 +105,7 @@ def main():
         print(run.detnames)
         eventnum = 0
         runhsd=True
-        runvls=False
+        runvls=Falts
         runebeam=False
         runxtcav=True
         hsd = None
@@ -144,14 +144,21 @@ def main():
             if runxtcav:
                 ## HERE HERE HERE HERE ##
                 ## change this to xtcav.process() style... build xtcav object like the others
-                img = np.copy(xtcav.raw.value(evt)).astype(np.int16)
-                mf = np.argmax(np.histogram(img,np.arange(2**8))[0])
-                img -= mf
-                imgcrop,x0,y0 = xtcav_crop(img,win=(512,256))
-                xtcavImages += [imgcrop]
-                xtcavX0s += [x0]
-                xtcavY0s += [y0]
-                xtcavEvents += [eventnum]
+                try:
+                    if type(xtcav.raw.value(evt)) == None:
+                        print(eventnum,'skip per problem with XTCAV')
+                        continue
+                    img = np.copy(xtcav.raw.value(evt)).astype(np.int16)
+                    mf = np.argmax(np.histogram(img,np.arange(2**8))[0])
+                    img -= mf
+                    imgcrop,x0,y0 = xtcav_crop(img,win=(512,256))
+                    xtcavImages += [imgcrop]
+                    xtcavX0s += [x0]
+                    xtcavY0s += [y0]
+                    xtcavEvents += [eventnum]
+                except:
+                    print(eventnum,'skipping xtcav, skip per failed try:')
+                    continue
 
 
 
@@ -233,7 +240,7 @@ def main():
                 g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
         if runxtcav:
             grpxtcav = f.create_group('xtcav')
-            grpxtcav.create_dataset('images',data=xtcavImges,dtype=np.uint8)
+            grpxtcav.create_dataset('images',data=xtcavImages,dtype=np.int16)
             grpxtcav.create_dataset('x0s',data=xtcavX0s,dtype=np.float16)
             grpxtcav.create_dataset('y0s',data=xtcavY0s,dtype=np.float16)
             grpxtcav.create_dataset('xtcavEvents',data=xtcavEvents,dtype=np.float16)
