@@ -105,14 +105,14 @@ def main():
         print(run.detnames)
         eventnum = 0
         runhsd=True
-        runvls=Falts
+        runvls=True
         runebeam=False
         runxtcav=True
         hsd = None
         if runhsd and 'hsd' in run.detnames:
             hsd = run.Detector('hsd')
         vls = None
-        if runvls and 'vls' in run.detnames:
+        if runvls and 'andor' in run.detnames:
             vls = run.Detector('andor')
         ebeam = None
         if runebeam and 'ebeam' in run.detnames:
@@ -131,6 +131,9 @@ def main():
         xtcavX0s = []
         xtcavY0s = []
         xtcavEvents = []
+
+        vlsEvents = []
+        hsdEvents = []
 
 
         init = True 
@@ -165,13 +168,17 @@ def main():
             if runvls:
                 ''' VLS specific section, do this first to slice only good shots '''
                 try:
+                    if type(vls) == None:
+                        print(eventnum,'skip per problem with VLS')
+                        continue
                     vlswv = np.squeeze(vls.raw.value(evt))
                     vlswv = vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
-                    if np.max(vlswv)<300:  # too little amount of xrays
-                        print(eventnum,'skip per weak vls')
+                    if np.max(vlswv)<1:  # too little amount of xrays
+                        print(eventnum,'skip per negative vls')
                         #eventnum += 1
                         continue
                     spect.process(vlswv)
+                    vlsEvents += [eventnum]
                     #spect.print_v()
 
                 except:
@@ -206,15 +213,19 @@ def main():
                      #   print(eventnum, 'failed hsd for some reason')
                       #  continue
 
+                hsdEvents += [eventnum]
+
+                if eventnum<10:
+                        print('ports = %s'%([k for k in chans.keys()]))
                 if eventnum<100:
                     if eventnum%10<2: 
-                        print('working event %i, nedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
+                        print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
                 elif eventnum<1000:
                     if eventnum%100<2: 
-                        print('working event %i, nedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
+                        print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
                 else:
                     if eventnum%1000<2: 
-                        print('working event %i, nedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
+                        print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
                 eventnum += 1
 
         f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') 
@@ -238,12 +249,14 @@ def main():
                 g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
                 g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
                 g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
+                g.create_dataset('events',data=hsdEvents)
         if runxtcav:
             grpxtcav = f.create_group('xtcav')
             grpxtcav.create_dataset('images',data=xtcavImages,dtype=np.int16)
             grpxtcav.create_dataset('x0s',data=xtcavX0s,dtype=np.float16)
             grpxtcav.create_dataset('y0s',data=xtcavY0s,dtype=np.float16)
             grpxtcav.create_dataset('xtcavEvents',data=xtcavEvents,dtype=np.float16)
+            grpxtcav.create_dataset('events',data=xtcavEvents)
 
         if runvls:
             grpvls = f.create_group('vls')
@@ -251,6 +264,7 @@ def main():
             grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
             grpvls.create_dataset('sum',data=spect.vs,dtype=np.uint64)
             grpvls.attrs.create('size',data=spect.vsize,dtype=np.int32)
+            grpvls.create_dataset('events',data=vlsEvents)
         if runebeam:
             grpebeam = f.create_group('ebeam')
             grpebeam.create_dataset('l3energy',data=ebunch.l3,dtype=np.uint16)
