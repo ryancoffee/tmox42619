@@ -1,4 +1,4 @@
-## Beamtime  
+# Beamtime  
 This repo is predominantly for analysis of the lcls x42619 beamtime performed end of June 2021.  
 This will also host code that analyzes for the xcomm118 for runs in the 400's since that was the commissioning shifts.  
 
@@ -40,3 +40,16 @@ OK, this is how I ran before:
 ```bash
 for id in 21 22 23 25 26 27 28 29 30; do sbatch -p psanaq --nodes 1 --ntasks-per-node 1 --mem-per-cpu=32GB --gpus-per-node=0 --wrap="/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py tmox42619 $id 40000"; done
 ```
+
+# Xtcav 
+
+## Eigenfaces approach
+Use logarithmic eigenvals representaiton,  
+fit with a low order polynomial for below i = 300 and above.  
+use the fits to produce a "weiner filter"  
+Then approximate the weiner filter with a reverse sin() version of the erf()... e.g. 1 if i<icen-w;0 if i>icen+w; otherwise 0.5*( 1.-sin(pi/2*(i-icen)/w) )  
+this icen+w is also where we truncate the eigvecs, beyond this is out of signal.  
+
+![plot](./figs/run41.xtcav.nolasing.eigvals.png)
+Eigenvalues for Run 41 nolasing 
+

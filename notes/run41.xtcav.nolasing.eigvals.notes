@@ -1,0 +1,5 @@
+Use logarithmic eigenvals representaiton, 
+fit with a low order polynomial for below i = 300 and above.
+use the fits to produce a "weiner filter"
+Then approximate the weiner filter with a reverse sin() version of the erf()... e.g. 1 if i<icen-w;0 if i>icen+w; otherwise 0.5*( 1.-sin(pi/2*(i-icen)/w) )
+this icen+w is also where we truncate the eigvecs, beyond this is out of signal.
