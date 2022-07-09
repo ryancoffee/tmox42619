@@ -1,0 +1,33 @@
+>>> _= [print([int((np.log2(v)-16)*512) for v in word]) for word in raw_tofs[:10] ]
+[35, 49, 65, 66, 256, 394]
+[63, 64, 66, 98, 134, 136, 145, 191, 297]
+[30, 31, 63, 64, 66, 74, 86, 94, 114, 141, 160, 164]
+[64, 146]
+[30, 32, 36, 49, 50, 52, 54, 65, 67, 73, 94, 112, 115, 142, 187, 224, 255]
+[29, 32, 49, 66, 223]
+[-3, 1, 30, 30, 31, 33, 48, 49, 57, 62, 64, 73, 80, 125, 331, 383]
+[46, 48, 54, 61, 64, 66, 165, 240]
+[30, 64, 65, 81, 141]
+[48, 64]
+>>> 
+
+coffee@coffee-ThinkPad-X395:~/projects/slac/analysis_2022/x42619/sandbox (ryan-dev)$ python3
+Python 3.8.10 (default, Mar 15 2022, 12:22:08) 
+[GCC 9.4.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import numpy as np
+>>> import h5py
+>>> path = '/media/coffee/9C33-6BBD1/ryan_output_2022/h5files/'
+>>> fname = 'hits.tmox42619.run47.h5'
+>>> f = h5py.File('%s%s'%(path,fname),'r')
+>>> raw_tofs = []
+>>> nedges = f['port_4']['nedges'][()]
+>>> tofs = f['port_4']['tofs'][()]
+>>> addresses = f['port_4']['addresses'][()]
+>>> f.close()
+>>> for i,a in enumerate(addresses):
+...     raw_tofs += [ [t for t in tofs[a:a+nedges[i]] ] ]
+... 
+>>> len(raw_tofs)
+10001
+
