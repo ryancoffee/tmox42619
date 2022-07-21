@@ -25,8 +25,12 @@ def processBlock(params):
         (nims,xdim,ydim) = inh5['xtcav']['images'][()].shape 
         nims //= params['nblocks'] 
         print('newshape = (%i,%i,%i)'%(nims,xdim,ydim))
-        datablock = np.column_stack([inh5['xtcav']['images'][()][params['tid']+params['nblocks']*j,:,:].flatten() for j in range(nims) ] )
+        datablock = np.column_stack([inh5['xtcav']['images'][()][params['tid']+params['nblocks']*j,::params['skipx'],::params['skipy'] ].flatten() for j in range(nims) ] )
         print('datablock %i shape\t%s'%(params['tid'],datablock.shape))
+    params['meanimg'] = np.mean(datablock,axis=1)
+    print("params['meanimg'].shape",params['meanimg'].shape)
+    for i in range(datablock.shape[1]):
+        datablock[:,i] -= params['meanimg'].astype(np.int16)
     tfread = time.process_time_ns()
     print('File read time [msec]\t%i'%(int(tfread-tstart)//1000000))
     outfile = '%s.eigenxtcav.tid%i.h5'%(params['infile'],params['tid'])
@@ -39,7 +43,8 @@ def processBlock(params):
     teig = time.process_time_ns()
     print('eigMat time [msec]\t%i'%(int(teig-tcov)//1000000))
     print('eigMat.shape',eigMat.shape)
-    params['eigvals'] = eigVals 
+    params['eigvals'] = eigVals.real
+    params['eigmat'] = eigMat.real
     return params
 
 def main():
@@ -63,11 +68,14 @@ def main():
         p['outpath'] = str(sys.argv[2])
         p['nblocks'] = np.uint8(nblocks)
         p['tid'] = np.uint8(i)
+        p['skipx'] = 4
+        p['skipy'] = 4
 
     #pool = mp.Pool(len(paramslist))
     paramslist = mp.Pool(mp.cpu_count()).map(processBlock,paramslist)
 
-    np.savetxt('%s/eigvals.dat'%paramslist[0]['outpath'],np.column_stack([p['eigvals'] for p in paramslist]),fmt='%.6f')
+    np.savetxt('%s/%s.eigvals.dat'%(paramslist[0]['outpath'],paramslist[0]['infile']),np.column_stack([np.log2(np.abs(p['eigvals'])) for p in paramslist]),fmt='%.6f')
+    _= [np.savetxt('%s/%s.eigmat%i.dat'%(p['outpath'],p['infile'],p['tid']),p['eigmat'],fmt='%.6f') for p in paramslist]
 
     current_time = datetime.now().strftime("%H:%M:%S")
     print("finished: \t%s"%(current_time))
