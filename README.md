@@ -53,3 +53,8 @@ this icen+w is also where we truncate the eigvecs, beyond this is out of signal.
 ![plot](./figs/run41.xtcav.nolasing.eigvals.png)
 Eigenvalues for Run 41 nolasing 
 
+## running eigen\_xtcav.py with slurm
+```bash
+sbatch -p psanaq --nodes 1 --ntasks-per-node 16 --mem-per-cpu=16GB --gpus-per-node=0 --wrap="./src/eigen_xtcav.py /reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files/hits.tmox42619.run41.h5 /reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/xtcav"
+```
+
