@@ -19,7 +19,7 @@ vals,vecs = np.linalg.eig(COVMAT) # this peice takes a long time.
 Then remove mean, then remove a handfull of np.dot(eigvecs,data) and plot the >0 pixels
 '''
 
-def processBlock(params):
+def processBlock(params:dict) -> dict:
     tstart = time.process_time_ns()
     with h5py.File('%s/%s.h5'%(params['inpath'],params['infile']),'r') as inh5:
         (nims,xdim,ydim) = inh5['xtcav']['images'][()].shape 
@@ -47,8 +47,7 @@ def processBlock(params):
     params['eigmat'] = eigMat.real
     return params
 
-def main():
-
+def main() -> None:
     current_time = datetime.now().strftime("%H:%M:%S")
     print("started: \t%s"%(current_time))
 
