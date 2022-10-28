@@ -63,7 +63,7 @@ def main():
     scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_multicolorhack/h5files'
 
     if len(sys.argv)<3:
-        print('syntax: ./hits2h5.py <nshots> <expname> <list of run numbers>')
+        print('syntax: ./hits2h5_multicolor.py <nshots> <expname> <list of run numbers>')
     expname = sys.argv[1]
     nshots = int(sys.argv[2])
     runnums = [int(run) for run in sys.argv[3:]]
