@@ -13,13 +13,6 @@ from Ebeam import *
 from Vls import *
 
 
-def PWRspectrum(wv):
-    return np.power(abs(np.fft.fft(wv).real),int(2))
-
-def rollon(vec,n):
-    vec[:int(n)] = vec[:int(n)]*np.arange(int(n),dtype=float)/float(n)
-    return vec
-
 def fillconfigs(cfgname):
     params = {'chans':{},'t0s':{},'logicthresh':{}}
     with h5py.File(cfgname,'r') as f:
