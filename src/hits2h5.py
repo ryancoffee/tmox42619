@@ -11,14 +11,8 @@ from scipy.fftpack import dct,dst
 from Ports import *
 from Ebeam import *
 from Vls import *
+from utils import *
 
-
-def PWRspectrum(wv):
-    return np.power(abs(np.fft.fft(wv).real),int(2))
-
-def rollon(vec,n):
-    vec[:int(n)] = vec[:int(n)]*np.arange(int(n),dtype=float)/float(n)
-    return vec
 
 def fillconfigs(cfgname):
     params = {'chans':{},'t0s':{},'logicthresh':{}}
@@ -65,16 +59,14 @@ def main():
         ###### Change this to your output dir ######
         ############################################
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
-    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files'
-    expname = 'tmox42619'
-    runnum = 62 
-    nshots = 100
-    if len(sys.argv)>2:
-        expname = sys.argv[1]
-        runnum = int(sys.argv[2])
+    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files'
+    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_multicolorhack/h5files'
 
-    if len(sys.argv)>3:
-        nshots = int(sys.argv[3])
+    if len(sys.argv)<3:
+        print('syntax: ./hits2h5.py <nshots> <expname> <list of run numbers>')
+    expname = sys.argv[1]
+    nshots = int(sys.argv[2])
+    runnums = [int(run) for run in sys.argv[3:]]
 
     print('starting analysis exp %s for run %i'%(expname,int(runnum)))
     cfgname = '%s/%s.hsdconfig.h5'%(scratchdir,expname)
@@ -85,41 +77,46 @@ def main():
 
     nr_expand = params['expand']
 
-    spect = Vls()
-    ebunch = Ebeam()
-    port = {} 
+    spect = [Vls() for r in runnums]
+    ebunch = [Ebeam() for r in runnums]
+    port = [{} for r in runnums] 
     scale = int(1) # to better fill 16 bit int
     inflate = params['inflate']
     for key in logicthresh.keys():
         logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
-    for key in chans.keys():
-        port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**6)
+    for r in range(len(runnums)):
+        for key in chans.keys():
+            port[r][key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**6)
 
-    ds = psana.DataSource(exp=expname,run=runnum)
+    ds = [psana.DataSource(exp=expname,run=r) for r in runnums]
 
     #for run in ds.runs():
-    run = next(ds.runs())
+    runs = [next(ds[r].runs()) for r in range(len(runnums))]
         #np.savetxt('%s/waveforms.%s.%i.%i.dat'%(scratchdir,expname,runnum,key),wv[key],fmt='%i',header=headstring)
-    for i in range(1):
-        print(run.detnames)
-        eventnum = 0
-        runhsd=True
-        runvls=True
-        runebeam=False
-        runxtcav=True
-        hsd = None
-        if runhsd and 'hsd' in run.detnames:
-            hsd = run.Detector('hsd')
-        vls = None
-        if runvls and 'andor' in run.detnames:
-            vls = run.Detector('andor')
-        ebeam = None
+    for r in range(len(runnums)):
+        print(runs[r].detnames)
+    eventnum = 0
+    runhsd=True
+    runvls=True
+    runebeam=True
+    runxtcav=False
+    hsds = []
+    vlss = []
+    ebeams = []
+    xtcavs = []
+    for r in range(len(runnums)):
+        if runhsd and 'hsd' in runs[r].detnames:
+            hsds += [runs[r].Detector('hsd')]
+        if runvls and 'andor' in runs[r].detnames:
+            vlss += [runs[r].Detector('andor')]
         if runebeam and 'ebeam' in run.detnames:
-            ebeam = run.Detector('ebeam')
-        xtcav = None
+            ebeams += [run[r].Detector('ebeam')]
         if runxtcav and 'xtcav' in run.detnames:
-            xtcav = run.Detector('xtcav')
+            xtcavs += [runs[r].Detector('xtcav')]
+
+####### HERE HERE HERE HERE ###########
+####### finish working with lists of runs ###
 
         wv = {}
         wv_logic = {}
