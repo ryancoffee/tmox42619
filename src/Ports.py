@@ -171,20 +171,51 @@ class Port:
         return self
 
     def process_list(self,ss):
-        for s in ss:
-            if type(s) == type(None):
-                e = []
-                de = []
-                ne = 0
-            else:
+        e = []
+        de = []
+        ne = 0
+        if type(ss[0]) == type(None):
+            e = []
+            de = []
+            ne = 0
+        else:
+            for s in ss:
                 for adc in range(self.nadcs):
                     b = np.mean(s[adc:self.baselim+])
-### HERE HERE HERE HERE ###
-## mid-breaking stuff ##
-            
+                    s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale ) - int(self.scale*b)
+                logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.rolloff)
+                edene = scanedges_simple(logic,self.logicthresh,self.expand)
+                if edene[2]>0:
+                    e += edene[0]
+                    de += edene[1]
+                    ne += edene[2]
+
+        if self.initState:
+            self.sz = ss[0].shape[0]*self.inflate*self.expand
+            self.tofs = [0]
+            if ne<1:
+                self.addresses = [int(0)]
+                self.nedges = [int(0)]
+            else:
+                self.addresses = [int(1)]
+                self.nedges = [int(ne)]
+                self.tofs += e
+                self.slopes += de
+        else:
+            if ne<1:
+                self.addresses += [int(0)]
+                self.nedges += [int(0)]
+            else:
+                self.addresses += [int(len(self.tofs))]
+                self.nedges += [int(ne)]
+                self.tofs += e
+                self.slopes += de
         return self
 
     def process(self,s):
+        e = []
+        de = []
+        ne = 0
         if type(s) == type(None):
             e = []
             de = []

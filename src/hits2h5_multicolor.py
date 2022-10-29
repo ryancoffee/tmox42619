@@ -55,17 +55,16 @@ def main():
 
     nr_expand = params['expand']
 
-    spect = [Vls() for r in runnums]
-    ebunch = [Ebeam() for r in runnums]
-    port = [{} for r in runnums] 
+    spect = Vls()
+    ebunch = Ebeam()
+    port = {} 
     scale = int(1) # to better fill 16 bit int
     inflate = params['inflate']
     for key in logicthresh.keys():
         logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
-    for r in range(len(runnums)):
-        for key in chans.keys():
-            port[r][key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**6)
+    for key in chans.keys():
+        port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**6)
 
     ds = [psana.DataSource(exp=expname,run=r) for r in runnums]
 
@@ -115,13 +114,11 @@ def main():
                 if type(vls) == None:
                     print(eventnum,'skip per problem with VLS')
                     continue
-                vlswv = np.sum([np.squeeze(vls.raw.value(evt)) for evt in chooseevts])
-                vlswv = vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
                 if np.max(vlswv)<1:  # too little amount of xrays
                     print(eventnum,'skip per negative vls')
                     #eventnum += 1
                     continue
-                spect.process(vlswv)
+                spect.process_list([np.squeeze(vlss[0].raw.value(evt)) for evt in chooseevts])
                 vlsEvents += [eventnum]
                 #spect.print_v()
             except:
