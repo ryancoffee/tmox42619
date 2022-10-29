@@ -7,6 +7,7 @@ import sys
 import re
 import h5py
 from scipy.fftpack import dct,dst
+import time
 
 from Ports import *
 from Ebeam import *
@@ -28,31 +29,6 @@ def fillconfigs(cfgname):
                 params['logicthresh'][k] = f[p].attrs['logicthresh']
     return params
 
-def xtcav_crop(inimg,win=(256,256)):
-    # hard coded factor of 2 scale down
-    xprof = np.mean(inimg,axis=0)
-    yprof = np.mean(inimg,axis=1)
-    y0 = np.argmax(xprof)
-    x0 = np.argmax(yprof)
-    resimg = (np.roll(inimg,(-x0+win[0]//2,-y0+win[1]//2),axis=(0,1)))[:win[0],:win[1]]
-    tmp= np.column_stack((resimg,np.flip(resimg,axis=1)))
-    outimg=np.row_stack((tmp,np.flip(tmp,axis=0)))
-    W = dct(dct(outimg,axis=1,type=2),axis=0,type=2)
-    xenv = np.zeros(W.shape[0])
-    yenv = np.zeros(W.shape[1])
-    xenv[:win[0]//2] = 0.5*(1+np.cos(np.arange(win[0]//2)*np.pi/(win[0]/2)))
-    yenv[:win[1]//2] = 0.5*(1+np.cos(np.arange(win[1]//2)*np.pi/(win[1]/2)))
-    for i in range(W.shape[1]//2):
-        W[:,i] *= xenv
-    for i in range(W.shape[0]//2):
-        W[i,:] *= yenv
-    W *= 4.0/np.product(W.shape)
-    out = dct( dct(W[:win[0]//2,:win[1]//2],type=3,axis=0),type=3,axis=1)[:win[0]//4,:win[1]//4]
-    return out,x0//2,y0//2
-    #return dct(dct(W,axis=2,type=3),axis=1,type=3),x0,y0
-    #print(x0,y0)
-    #return inimg[:win[0],:win[1]],x0,y0
-    
 
 def main():
         ############################################
@@ -61,6 +37,8 @@ def main():
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files'
     scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_multicolorhack/h5files'
+
+    rng = np.random.default_rng(seed = int(time.time()%1*1e6))
 
     if len(sys.argv)<3:
         print('syntax: ./hits2h5_multicolor.py <nshots> <expname> <list of run numbers>')
@@ -100,11 +78,9 @@ def main():
     runhsd=True
     runvls=True
     runebeam=True
-    runxtcav=False
     hsds = []
     vlss = []
     ebeams = []
-    xtcavs = []
     for r in range(len(runnums)):
         if runhsd and 'hsd' in runs[r].detnames:
             hsds += [runs[r].Detector('hsd')]
@@ -112,82 +88,50 @@ def main():
             vlss += [runs[r].Detector('andor')]
         if runebeam and 'ebeam' in run.detnames:
             ebeams += [run[r].Detector('ebeam')]
-        if runxtcav and 'xtcav' in run.detnames:
-            xtcavs += [runs[r].Detector('xtcav')]
 
-####### HERE HERE HERE HERE ###########
-####### finish working with lists of runs ###
+    wv = {}
+    wv_logic = {}
+    v = [] # vls data matrix
+    vc = [] # vls centroids vector
+    vs = [] # vls sum is I think not used, maybe for normalization or used to be for integration and PDF sampling
+    l3 = [] # e-beam l3 (linac 3) in GeV.
 
-        wv = {}
-        wv_logic = {}
-        v = [] # vls data matrix
-        vc = [] # vls centroids vector
-        vs = [] # vls sum is I think not used, maybe for normalization or used to be for integration and PDF sampling
-        l3 = [] # e-beam l3 (linac 3) in GeV.
-        xtcavImages = []
-        xtcavX0s = []
-        xtcavY0s = []
-        xtcavEvents = []
-
-        vlsEvents = []
-        hsdEvents = []
+    vlsEvents = []
+    hsdEvents = []
 
 
-        init = True 
-        vsize = 0
+    init = True 
+    vsize = 0
 
-        print('chans: ',chans)
-        for evt in run.events():
-            if eventnum > nshots:
-                break
+    print('chans: ',chans)
+    for eventnum in range(nshots): # careful, going to pull shots as if from same event... so not processing evt by evt anymore
+        evts = [runs[r].next() for r in range(len(runnums))]
+        select = 1+int(rng.uniform()*len(runnums)-1)
+        chooseevts = rng.choice(evts,select)
 
-            if runxtcav:
-                ## HERE HERE HERE HERE ##
-                ## change this to xtcav.process() style... build xtcav object like the others
-                try:
-                    if type(xtcav.raw.value(evt)) == None:
-                        print(eventnum,'skip per problem with XTCAV')
-                        continue
-                    img = np.copy(xtcav.raw.value(evt)).astype(np.int16)
-                    mf = np.argmax(np.histogram(img,np.arange(2**8))[0])
-                    img -= mf
-                    imgcrop,x0,y0 = xtcav_crop(img,win=(512,256))
-                    xtcavImages += [imgcrop]
-                    xtcavX0s += [x0]
-                    xtcavY0s += [y0]
-                    xtcavEvents += [eventnum]
-                except:
-                    print(eventnum,'skipping xtcav, skip per failed try:')
+        if runvls:
+            ''' VLS specific section, do this first to slice only good shots '''
+            try:
+                if type(vls) == None:
+                    print(eventnum,'skip per problem with VLS')
                     continue
-
-
-
-            if runvls:
-                ''' VLS specific section, do this first to slice only good shots '''
-                try:
-                    if type(vls) == None:
-                        print(eventnum,'skip per problem with VLS')
-                        continue
-                    vlswv = np.squeeze(vls.raw.value(evt))
-                    vlswv = vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
-                    if np.max(vlswv)<1:  # too little amount of xrays
-                        print(eventnum,'skip per negative vls')
-                        #eventnum += 1
-                        continue
-                    spect.process(vlswv)
-                    vlsEvents += [eventnum]
-                    #spect.print_v()
-
-                except:
-                    print(eventnum,'skip per vls')
+                vlswv = np.sum([np.squeeze(vls.raw.value(evt)) for evt in chooseevts])
+                vlswv = vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
+                if np.max(vlswv)<1:  # too little amount of xrays
+                    print(eventnum,'skip per negative vls')
+                    #eventnum += 1
                     continue
+                spect.process(vlswv)
+                vlsEvents += [eventnum]
+                #spect.print_v()
+            except:
+                print(eventnum,'skip per vls')
+                continue
 
             if runebeam:
                 ''' Ebeam specific section '''
                 try:
-                    thisl3 = ebeam.raw.ebeamL3Energy(evt)
-                    thisl3 += 0.5
-                    ebunch.process(thisl3)
+                    ebunch.process_list([ebeam.raw.ebeamL3Energy(evt)+0.5 for evt in chooseevts])
                 except:
                     print(eventnum,'skipping ebeam, skip per l3')
                     continue
@@ -197,8 +141,8 @@ def main():
                 ''' HSD-Abaco section '''
                 for key in chans.keys(): # here key means 'port number'
                     #try:
-                    s = np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-                    port[key].process(s)
+                    ss = [np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) for evt in chooseevts]
+                    port[key].process_list(ss)
 
                     if init:
                         init = False
@@ -247,13 +191,6 @@ def main():
                 g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
                 g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
                 g.create_dataset('events',data=hsdEvents)
-        if runxtcav:
-            grpxtcav = f.create_group('xtcav')
-            grpxtcav.create_dataset('images',data=xtcavImages,dtype=np.int16)
-            grpxtcav.create_dataset('x0s',data=xtcavX0s,dtype=np.float16)
-            grpxtcav.create_dataset('y0s',data=xtcavY0s,dtype=np.float16)
-            grpxtcav.create_dataset('xtcavEvents',data=xtcavEvents,dtype=np.float16)
-            grpxtcav.create_dataset('events',data=xtcavEvents)
 
         if runvls:
             grpvls = f.create_group('vls')

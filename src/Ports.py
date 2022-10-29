@@ -170,6 +170,20 @@ class Port:
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         return self
 
+    def process_list(self,ss):
+        for s in ss:
+            if type(s) == type(None):
+                e = []
+                de = []
+                ne = 0
+            else:
+                for adc in range(self.nadcs):
+                    b = np.mean(s[adc:self.baselim+])
+### HERE HERE HERE HERE ###
+## mid-breaking stuff ##
+            
+        return self
+
     def process(self,s):
         if type(s) == type(None):
             e = []
