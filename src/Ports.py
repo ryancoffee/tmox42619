@@ -181,7 +181,7 @@ class Port:
         else:
             for s in ss:
                 for adc in range(self.nadcs):
-                    b = np.mean(s[adc:self.baselim+])
+                    b = np.mean(s[adc:self.baselim+adc:self.nadcs])
                     s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale ) - int(self.scale*b)
                 logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.rolloff)
                 edene = scanedges_simple(logic,self.logicthresh,self.expand)

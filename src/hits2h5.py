@@ -132,7 +132,6 @@ def main():
         vlsEvents = []
         hsdEvents = []
 
-
         init = True 
         vsize = 0
 

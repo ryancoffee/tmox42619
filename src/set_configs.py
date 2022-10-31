@@ -11,17 +11,20 @@ def main():
     #t0s = {0:73246,1:67008,2:68300,4:64922,5:66075,12:65762,13:65827,14:66906,15:71400,16:65391} # based on latest in repo ryan-dev (inflate=4 nr_expand=4)
     # Ideally we would measure the logicthresh knee for different delay windows, as the low energy hits might have lower carrier cascade in MCPs
 
-    if len(sys.argv)>1:
-        cfgfile = sys.argv[1]
-        with h5py.File(cfgfile,'w') as f:
-            f.attrs.create('expand',8) # expand controls the fractional resolution for scanedges by scaling index values and then zero crossing round to intermediate integers.
-            f.attrs.create('inflate',2) # inflate pads the DCT with zeros, artificially over sampling the waveform
-            for k in chans.keys():
-                key = 'port_%i'%int(k)
-                c = f.create_group(key)
-                c.attrs.create('hsd',data=chans[k])
-                c.attrs.create('t0',data=t0s[k])
-                c.attrs.create('logicthresh',data=logicthresh[k])
+    if len(sys.argv)<2:
+        print('I need an output filename to write configs to')
+        return
+
+    cfgfile = sys.argv[1]
+    with h5py.File(cfgfile,'w') as f:
+        f.attrs.create('expand',8) # expand controls the fractional resolution for scanedges by scaling index values and then zero crossing round to intermediate integers.
+        f.attrs.create('inflate',2) # inflate pads the DCT with zeros, artificially over sampling the waveform
+        for k in chans.keys():
+            key = 'port_%i'%int(k)
+            c = f.create_group(key)
+            c.attrs.create('hsd',data=chans[k])
+            c.attrs.create('t0',data=t0s[k])
+            c.attrs.create('logicthresh',data=logicthresh[k])
     return
 
 if __name__ == '__main__':

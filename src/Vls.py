@@ -1,13 +1,12 @@
 import numpy as np
 import typing
+from typing import List
 
-IntArray = list[int]
-
-VlsType = typing.NewType('VlsType',type(Vls))
+IntArray = List[int]
 
 
 class Vls:
-    def __init__(self: VlsType) -> None:
+    def __init__(self) -> None:
         self.v = [[]]
         self.vsize = int(0)
         self.vc = [[]]
@@ -15,7 +14,7 @@ class Vls:
         self.initState = True
         return
 
-    def process_list(self: VlsType, vlswvs: List(IntArray)) -> VlsType:
+    def process_list(self, vlswvs: List[IntArray]):
         nums = [[np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))])) for vlswv in vlswvs ]]
         dens = [[np.sum(vlswv) for vlswv in vlswvs]]
         if self.initState:
@@ -29,7 +28,7 @@ class Vls:
             self.vs += [[np.uint64(d) for d in dens]]
         return self
 
-    def process(self: VlsType, vlswv: IntArray) -> VlsType:
+    def process(self, vlswv: IntArray):
         mean = int(np.mean(vlswv[1900:])) # this subtracts baseline
         vlswv -= mean #vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
         #print("processing vls",vlswv.shape[0])
@@ -46,11 +45,11 @@ class Vls:
             self.vs += [np.uint64(den)]
         return self
 
-    def set_initState(self: VlsType,state: bool) -> VlsType:
+    def set_initState(self,state: bool):
         self.initState = state
         return self
 
-    def print_v(self: VlsType) -> VlsType:
+    def print_v(self):
         print(self.v[:10])
         return self
 

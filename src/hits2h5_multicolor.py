@@ -46,7 +46,8 @@ def main():
     nshots = int(sys.argv[2])
     runnums = [int(run) for run in sys.argv[3:]]
 
-    print('starting analysis exp %s for run %i'%(expname,int(runnum)))
+    print('starting analysis exp %s for runs '%(expname))
+    print(' '.join([str(r) for r in runnums]) )
     cfgname = '%s/%s.hsdconfig.h5'%(scratchdir,expname)
     params = fillconfigs(cfgname)
     chans = params['chans']
@@ -66,13 +67,13 @@ def main():
     for key in chans.keys():
         port[key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**6)
 
-    ds = [psana.DataSource(exp=expname,run=r) for r in runnums]
+    dss = [psana.DataSource(exp=expname,run=r) for r in runnums]
 
     #for run in ds.runs():
-    runs = [next(ds[r].runs()) for r in range(len(runnums))]
+    runs = [next(ds.runs()) for ds in dss]
         #np.savetxt('%s/waveforms.%s.%i.%i.dat'%(scratchdir,expname,runnum,key),wv[key],fmt='%i',header=headstring)
-    for r in range(len(runnums)):
-        print(runs[r].detnames)
+    for r in runs:
+        print(r.detnames)
     eventnum = 0
     runhsd=True
     runvls=True
@@ -80,13 +81,13 @@ def main():
     hsds = []
     vlss = []
     ebeams = []
-    for r in range(len(runnums)):
-        if runhsd and 'hsd' in runs[r].detnames:
-            hsds += [runs[r].Detector('hsd')]
-        if runvls and 'andor' in runs[r].detnames:
-            vlss += [runs[r].Detector('andor')]
-        if runebeam and 'ebeam' in run.detnames:
-            ebeams += [run[r].Detector('ebeam')]
+    for r in runs:
+        if runhsd and 'hsd' in r.detnames:
+            hsds += [r.Detector('hsd')]
+        if runvls and 'andor' in r.detnames:
+            vlss += [r.Detector('andor')]
+        if runebeam and 'ebeam' in r.detnames:
+            ebeams += [r.Detector('ebeam')]
 
     wv = {}
     wv_logic = {}
@@ -104,14 +105,14 @@ def main():
 
     print('chans: ',chans)
     for eventnum in range(nshots): # careful, going to pull shots as if from same event... so not processing evt by evt anymore
-        evts = [runs[r].next() for r in range(len(runnums))]
+        evts = [next(r.events()) for r in runs]
         select = 1+int(rng.uniform()*len(runnums)-1)
         chooseevts = rng.choice(evts,select)
 
         if runvls:
             ''' VLS specific section, do this first to slice only good shots '''
             try:
-                if type(vls) == None:
+                if type(vlss[0]) == None:
                     print(eventnum,'skip per problem with VLS')
                     continue
                 if np.max(vlswv)<1:  # too little amount of xrays
