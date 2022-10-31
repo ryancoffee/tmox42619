@@ -44,7 +44,7 @@ def main():
         print('syntax: ./hits2h5_multicolor.py <nshots> <expname> <list of run numbers>')
     expname = sys.argv[1]
     nshots = int(sys.argv[2])
-    runnums = [int(run) for run in sys.argv[3:]]
+    runnums = [int(r) for r in sys.argv[3:]]
 
     print('starting analysis exp %s for runs '%(expname))
     print(' '.join([str(r) for r in runnums]) )
@@ -115,10 +115,10 @@ def main():
                 if type(vlss[0]) == None:
                     print(eventnum,'skip per problem with VLS')
                     continue
-                if np.max(vlswv)<1:  # too little amount of xrays
-                    print(eventnum,'skip per negative vls')
-                    #eventnum += 1
-                    continue
+                #if np.max(vlswv)<1:  # too little amount of xrays
+                #    print(eventnum,'skip per negative vls')
+                #    #eventnum += 1
+                #    continue
                 spect.process_list([np.squeeze(vlss[0].raw.value(evt)) for evt in chooseevts])
                 vlsEvents += [eventnum]
                 #spect.print_v()
@@ -129,7 +129,7 @@ def main():
             if runebeam:
                 ''' Ebeam specific section '''
                 try:
-                    ebunch.process_list([ebeam.raw.ebeamL3Energy(evt)+0.5 for evt in chooseevts])
+                    ebunch.process_list([ebeams[0].raw.ebeamL3Energy(evt)+0.5 for evt in chooseevts])
                 except:
                     print(eventnum,'skipping ebeam, skip per l3')
                     continue
@@ -139,7 +139,7 @@ def main():
                 ''' HSD-Abaco section '''
                 for key in chans.keys(): # here key means 'port number'
                     #try:
-                    ss = [np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) for evt in chooseevts]
+                    ss = [np.array(hsds[0].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) for evt in chooseevts]
                     port[key].process_list(ss)
 
                     if init:
@@ -167,7 +167,9 @@ def main():
                         print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
                 eventnum += 1
 
-        f = h5py.File('%s/hits.%s.run%i.h5'%(scratchdir,expname,runnum),'w') 
+        runstrings = ['%03i'%i for i in runnums]
+        outname = '%s/hits.%s.runs_'%(scratchdir,expname) + '-'.join(runstrings) + '.h5'
+        f = h5py.File(outname,'w') 
                 # use f.create_group('port_%i'%i,portnum)
         #_ = [print(key,chans[key]) for key in chans.keys()]
         if runhsd:

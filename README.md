@@ -1,3 +1,8 @@
+# Hacking multicolor
+Photonenergies 600eV, 500eV, 400eV, 700eV
+All 0V retardation: Runs 7, 21, 36, 59  
+100V retardation: Runs 9, 26, 42, 62
+
 # Beamtime  
 This repo is predominantly for analysis of the lcls x42619 beamtime performed end of June 2021.  
 This will also host code that analyzes for the xcomm118 for runs in the 400's since that was the commissioning shifts.  

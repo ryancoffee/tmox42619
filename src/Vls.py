@@ -15,15 +15,16 @@ class Vls:
         return
 
     def process_list(self, vlswvs: List[IntArray]):
-        nums = [[np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))])) for vlswv in vlswvs ]]
-        dens = [[np.sum(vlswv) for vlswv in vlswvs]]
+        nums = [np.sum([i*vlswv[i] for i in range(len(vlswv))]) for vlswv in vlswvs ]
+        dens = [np.sum(vlswv) for vlswv in vlswvs]
         if self.initState:
-            self.v = [[np.sum(vlswv,axis=1).astype(np.int16)]]
+            self.v = [[np.sum(vlswvs,axis=1).astype(np.int16)]]
             self.vsize = len(self.v)
             self.vc = [[np.uint16(nums[i]/dens[i]) for i in range(len(nums))]]
-            self.vs = [[np.uint64(d) for d in dnes]]
+            self.vs = [[np.uint64(d) for d in dens]]
+            self.initState = False
         else:
-            self.v += [[np.sum(vlswv,axis=1).astype(np.int16)]]
+            self.v += [[np.sum(vlswvs,axis=1).astype(np.int16)]]
             self.vc += [[np.uint16(nums[i]/dens[i]) for i in range(len(nums))]]
             self.vs += [[np.uint64(d) for d in dens]]
         return self
@@ -39,6 +40,7 @@ class Vls:
             self.vsize = len(self.v)
             self.vc = [np.uint16(num/den)]
             self.vs = [np.uint64(den)]
+            self.initState = False
         else:
             self.v += [vlswv.astype(np.int16)]
             self.vc += [np.uint16(num/den)]

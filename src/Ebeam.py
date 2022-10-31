@@ -8,6 +8,7 @@ class Ebeam:
     def process_list(self,l3list):
         if self.initState:
             self.l3 = [[np.uint16(l3) for l3 in l3list]]
+            self.initState = False
         else:
             self.l3 += [[np.uint16(l3) for l3 in l3list]]
         return self
