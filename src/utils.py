@@ -5,6 +5,12 @@ import h5py
 from scipy import tanh
 import math
 
+def checkdet(runlist,detname):
+    for r in runlist:
+        if not detname in r.detnames:
+            return False 
+    return True
+
 def PWRspectrum(wv):
     return np.power(abs(np.fft.fft(wv).real),int(2))
 

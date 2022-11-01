@@ -78,16 +78,15 @@ def main():
     runhsd=True
     runvls=True
     runebeam=True
-    hsds = []
-    vlss = []
-    ebeams = []
-    for r in runs:
-        if runhsd and 'hsd' in r.detnames:
-            hsds += [r.Detector('hsd')]
-        if runvls and 'andor' in r.detnames:
-            vlss += [r.Detector('andor')]
-        if runebeam and 'ebeam' in r.detnames:
-            ebeams += [r.Detector('ebeam')]
+    hsd = None
+    vls = None 
+    ebeam = None
+    if runhsd and checkdet(runs,'hsd'):
+        hsd = runs[0].Detector('hsd')
+    if runvls and checkdet(runs,'andor'):
+        vls = runs[0].Detector('andor')
+    if runebeam and checkdet(runs,'ebeam'):
+        ebeam = runs[0].Detector('ebeam')
 
     wv = {}
     wv_logic = {}
@@ -96,13 +95,14 @@ def main():
     vs = [] # vls sum is I think not used, maybe for normalization or used to be for integration and PDF sampling
     l3 = [] # e-beam l3 (linac 3) in GeV.
 
+    init = True 
+    vsize = 0
+
     vlsEvents = []
     hsdEvents = []
 
 
-    init = True 
-    vsize = 0
-
+    
     print('chans: ',chans)
     for eventnum in range(nshots): # careful, going to pull shots as if from same event... so not processing evt by evt anymore
         evts = [next(r.events()) for r in runs]
@@ -112,66 +112,67 @@ def main():
         if runvls:
             ''' VLS specific section, do this first to slice only good shots '''
             try:
-                if type(vlss[0]) == None:
+                if type(vls) == None:
                     print(eventnum,'skip per problem with VLS')
                     continue
                 #if np.max(vlswv)<1:  # too little amount of xrays
                 #    print(eventnum,'skip per negative vls')
                 #    #eventnum += 1
                 #    continue
-                spect.process_list([np.squeeze(vlss[0].raw.value(evt)) for evt in chooseevts])
+                spect.process_list([np.squeeze(vls.raw.value(evt)) for evt in chooseevts],max_len=len(runs))
                 vlsEvents += [eventnum]
                 #spect.print_v()
             except:
                 print(eventnum,'skip per vls')
                 continue
 
-            if runebeam:
+        if runebeam:
                 ''' Ebeam specific section '''
                 try:
-                    ebunch.process_list([ebeams[0].raw.ebeamL3Energy(evt)+0.5 for evt in chooseevts])
+                    ebunch.process_list([ebeam.raw.ebeamL3Energy(evt)+0.5 for evt in chooseevts],max_len=len(runs))
                 except:
                     print(eventnum,'skipping ebeam, skip per l3')
                     continue
 
-            if runhsd:
+        if runhsd:
     
-                ''' HSD-Abaco section '''
-                for key in chans.keys(): # here key means 'port number'
-                    #try:
-                    ss = [np.array(hsds[0].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) for evt in chooseevts]
-                    port[key].process_list(ss)
+            ''' HSD-Abaco section '''
+            for key in chans.keys(): # here key means 'port number'
+                #try:
+                ss = [np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) for evt in chooseevts]
+                port[key].process_list(ss,max_len=len(runs))
 
-                    if init:
-                        init = False
-                        ebunch.set_initState(False)
-                        spect.set_initState(False)
-                        for key in chans.keys():
-                            port[key].set_initState(False)
-                    #except:
-                     #   print(eventnum, 'failed hsd for some reason')
-                      #  continue
 
-                hsdEvents += [eventnum]
+            hsdEvents += [eventnum]
 
-                if eventnum<10:
-                        print('ports = %s'%([k for k in chans.keys()]))
-                if eventnum<100:
-                    if eventnum%10<2: 
-                        print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
-                elif eventnum<1000:
-                    if eventnum%100<2: 
-                        print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
-                else:
-                    if eventnum%1000<2: 
-                        print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
-                eventnum += 1
+            if eventnum<10:
+                print('ports = %s'%([k for k in chans.keys()]))
+            if eventnum<100:
+                if eventnum%10<2: 
+                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
+            elif eventnum<1000:
+                if eventnum%100<2: 
+                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
+            else:
+                if eventnum%1000<2: 
+                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
 
-        runstrings = ['%03i'%i for i in runnums]
-        outname = '%s/hits.%s.runs_'%(scratchdir,expname) + '-'.join(runstrings) + '.h5'
-        f = h5py.File(outname,'w') 
-                # use f.create_group('port_%i'%i,portnum)
-        #_ = [print(key,chans[key]) for key in chans.keys()]
+        if init:
+            init = False
+            if runebeam:
+                ebunch.set_initState(False)
+            if runvls:
+                spect.set_initState(False)
+            if runhsd:
+                for key in chans.keys():
+                    port[key].set_initState(False)
+        eventnum += 1
+
+    runstrings = ['%03i'%i for i in runnums]
+    outname = '%s/hits.%s.runs_'%(scratchdir,expname) + '-'.join(runstrings) + '.h5'
+    print('writing to %s'%outname)
+        
+    with h5py.File(outname,'w') as f:
         if runhsd:
             for key in chans.keys(): # remember key == port number
                 g = f.create_group('port_%i'%(key))
@@ -202,7 +203,6 @@ def main():
         if runebeam:
             grpebeam = f.create_group('ebeam')
             grpebeam.create_dataset('l3energy',data=ebunch.l3,dtype=np.uint16)
-        f.close()
 
     print("Hello, I'm done now!")
     return

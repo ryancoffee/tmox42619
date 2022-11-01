@@ -170,7 +170,7 @@ class Port:
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         return self
 
-    def process_list(self,ss):
+    def process_list(self,ss,max_len):
         e = []
         de = []
         ne = 0

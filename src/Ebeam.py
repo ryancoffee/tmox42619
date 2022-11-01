@@ -5,12 +5,12 @@ class Ebeam:
         self.l3 = [[]]
         self.initState = True
         return 
-    def process_list(self,l3list):
+    def process_list(self,l3list,max_len):
         if self.initState:
-            self.l3 = [[np.uint16(l3) for l3 in l3list]]
+            self.l3 = [[np.uint16(l3) for l3 in l3list] + [0 for i in range(max_len-len(l3list))]]
             self.initState = False
         else:
-            self.l3 += [[np.uint16(l3) for l3 in l3list]]
+            self.l3 += [[np.uint16(l3) for l3 in l3list] + [0 for i in range(max_len-len(l3list))]]
         return self
     def process(self,l3in):
         if self.initState:
