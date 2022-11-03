@@ -1,7 +1,23 @@
 # Hacking multicolor
-Photonenergies 600eV, 500eV, 400eV, 700eV
-All 0V retardation: Runs 7, 21, 36, 59  
-100V retardation: Runs 9, 26, 42, 62
+## Argon
+Photonenergies 600eV, 500eV, 400eV, 700eV  
+All 0V retardation: Runs 7 21 36 59    
+50V retardation: Runs 8 23 39 61
+100V retardation: Runs 9 26 42 62  
+150V retardation: Runs 10 28 -- 63
+175V retardation: Runs 11 29 --
+
+Careful, the runs of 100eV different photon energies had different vls pitches, so that needs to be calibrated instead of blindly added as doing now.  
+
+## Neon
+Watch it... vls pitch changed between run 86 and 87... careful!  
+Furthermore, having trouble with evt in run 86 for some reason.
+All 0V retardation.  
+photon energies: 920 915 910 905 [900] 895 890 885 880 875 870 850
+runs: 82 83 84 85 [86] 87 88 89 90 93 94 95
+vls pitch: 6.9 6.9 6.9 6.9 6.9 6.8 6.8 6.8 6.8 6.8 6.8 6.8       
+
+
 
 # Beamtime  
 This repo is predominantly for analysis of the lcls x42619 beamtime performed end of June 2021.  

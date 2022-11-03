@@ -12,6 +12,7 @@ import time
 from Ports import *
 from Ebeam import *
 from Vls import *
+from Gmd import *
 from utils import *
 
 
@@ -78,15 +79,20 @@ def main():
     runhsd=True
     runvls=True
     runebeam=True
+    rungmd=False
+    runxtcav=False
     hsd = None
     vls = None 
     ebeam = None
+    gmd = None
     if runhsd and checkdet(runs,'hsd'):
         hsd = runs[0].Detector('hsd')
     if runvls and checkdet(runs,'andor'):
         vls = runs[0].Detector('andor')
     if runebeam and checkdet(runs,'ebeam'):
         ebeam = runs[0].Detector('ebeam')
+    if rungmd and checkdet(runs,'gmd'):
+        gmd = runs[0].Detector('gmd')
 
     wv = {}
     wv_logic = {}
@@ -94,20 +100,44 @@ def main():
     vc = [] # vls centroids vector
     vs = [] # vls sum is I think not used, maybe for normalization or used to be for integration and PDF sampling
     l3 = [] # e-beam l3 (linac 3) in GeV.
+    gm = [] # gmd energy in unknown
 
     init = True 
     vsize = 0
 
     vlsEvents = []
     hsdEvents = []
+    ebeamEvents = []
+    gmdEvents = []
 
+    runstrings = ['%03i'%i for i in runnums]
+    outname = '%s/hits.%s.runs_'%(scratchdir,expname) + '-'.join(runstrings) + '.h5'
 
     
     print('chans: ',chans)
     for eventnum in range(nshots): # careful, going to pull shots as if from same event... so not processing evt by evt anymore
         evts = [next(r.events()) for r in runs]
-        select = 1+int(rng.uniform()*len(runnums)-1)
+        select = 1+int(rng.uniform()*(len(runnums)-2))
         chooseevts = rng.choice(evts,select)
+
+        if rungmd:
+            ''' GMD specific section '''
+            try:
+                goodchoice = True
+                ens = [gmd.raw.energy(evt) for evt in chooseevts]
+                for e in ens:
+                    if e==None or str(e)=='nan':
+                        goodchoice = False
+
+                if goodchoice:
+                    gmd.process_list(ens,max_len=len(runs))
+                    gmdEvents += [eventnum]
+                else:
+                    print(eventnum,"skipping since badchoice on chooseevts")
+                    continue
+            except:
+                print(eventnum,"skipping, GMD failed as None or 'nan' for unkiwn opaque reason")
+                continue
 
         if runvls:
             ''' VLS specific section, do this first to slice only good shots '''
@@ -130,9 +160,13 @@ def main():
                 ''' Ebeam specific section '''
                 try:
                     ebunch.process_list([ebeam.raw.ebeamL3Energy(evt)+0.5 for evt in chooseevts],max_len=len(runs))
+                    ebeamEvents += [eventnum]
                 except:
                     print(eventnum,'skipping ebeam, skip per l3')
                     continue
+
+
+
 
         if runhsd:
     
@@ -142,23 +176,48 @@ def main():
                 ss = [np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) for evt in chooseevts]
                 port[key].process_list(ss,max_len=len(runs))
 
-
             hsdEvents += [eventnum]
 
             if eventnum<10:
                 print('ports = %s'%([k for k in chans.keys()]))
             if eventnum<100:
-                if eventnum%10<2: 
+                if eventnum%10<1: 
                     print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
             elif eventnum<1000:
-                if eventnum%100<2: 
+                if eventnum%100<1: 
                     print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
             else:
-                if eventnum%1000<2: 
+                if eventnum%1000<1: 
                     print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
+
+        if eventnum > 1 and eventnum <1000 and eventnum%100==0:
+            with h5py.File(outname,'w') as f:
+                print('writing to %s'%outname)
+                if runhsd:
+                    Port.update_h5(f,port,hsdEvents,chans)
+                if runvls:
+                    Vls.update_h5(f,spect,vlsEvents)
+                if runebeam:
+                    Ebeam.update_h5(f,ebunch,ebeamEvents)
+                if rungmd:
+                    Gmd.update_h5(f,gmd,gmdEvents)
+
+        elif eventnum>900 and eventnum%1000==0:
+            with h5py.File(outname,'w') as f:
+                print('writing to %s'%outname)
+                if runhsd:
+                    Port.update_h5(f,port,hsdEvents,chans)
+                if runvls:
+                    Vls.update_h5(f,spect,vlsEvents)
+                if runebeam:
+                    Ebeam.update_h5(f,ebunch,ebeamEvents)
+                if rungmd:
+                    Gmd.update_h5(f,gmd,gmdEvents)
 
         if init:
             init = False
+            if rungmd:
+                gmd.set_initState(False)
             if runebeam:
                 ebunch.set_initState(False)
             if runvls:
@@ -168,41 +227,17 @@ def main():
                     port[key].set_initState(False)
         eventnum += 1
 
-    runstrings = ['%03i'%i for i in runnums]
-    outname = '%s/hits.%s.runs_'%(scratchdir,expname) + '-'.join(runstrings) + '.h5'
-    print('writing to %s'%outname)
         
     with h5py.File(outname,'w') as f:
+        print('writing to %s'%outname)
         if runhsd:
-            for key in chans.keys(): # remember key == port number
-                g = f.create_group('port_%i'%(key))
-                g.create_dataset('tofs',data=port[key].tofs,dtype=np.int32) 
-                g.create_dataset('slopes',data=port[key].slopes,dtype=np.int32) 
-                g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
-                g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint32)
-                wvgrp = g.create_group('waves')
-                lggrp = g.create_group('logics')
-                for k in port[key].waves.keys():
-                    wvgrp.create_dataset(k,data=port[key].waves[k],dtype=np.int16)
-                    lggrp.create_dataset(k,data=port[key].logics[k],dtype=np.int32)
-                g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
-                g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
-                g.attrs.create('t0',data=port[key].t0,dtype=float)
-                g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
-                g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-                g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
-                g.create_dataset('events',data=hsdEvents)
-
+            Port.update_h5(f,port,hsdEvents,chans)
         if runvls:
-            grpvls = f.create_group('vls')
-            grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
-            grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
-            grpvls.create_dataset('sum',data=spect.vs,dtype=np.uint64)
-            grpvls.attrs.create('size',data=spect.vsize,dtype=np.int32)
-            grpvls.create_dataset('events',data=vlsEvents)
+            Vls.update_h5(f,spect,vlsEvents)
         if runebeam:
-            grpebeam = f.create_group('ebeam')
-            grpebeam.create_dataset('l3energy',data=ebunch.l3,dtype=np.uint16)
+            Ebeam.update_h5(f,ebunch,ebeamEvents)
+        if rungmd:
+            Gmd.update_h5(f,gmd,gmdEvents)
 
     print("Hello, I'm done now!")
     return

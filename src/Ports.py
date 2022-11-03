@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.fftpack import dct,dst
 from utils import mypoly,tanhInt
+import h5py
     
 #def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=256,stride=128):
 rng = np.random.default_rng()
@@ -149,6 +150,34 @@ class Port:
         self.waves = {}
         self.logics = {}
         self.shot = int(0)
+
+    @classmethod
+    def update_h5(cls,f,port,hsdEvents,chans):
+        for key in chans.keys(): # remember key == port number
+            g = None
+            if 'port_%i'%(key) in f.keys():
+                g = f['port_%i'%(key)]
+                wvgrp = g['waves']
+                lggrp = g['logics']
+            else:
+                g = f.create_group('port_%i'%(key))
+                wvgrp = g.create_group('waves')
+                lggrp = g.create_group('logics')
+            g.create_dataset('tofs',data=port[key].tofs,dtype=np.int32) 
+            g.create_dataset('slopes',data=port[key].slopes,dtype=np.int32) 
+            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
+            g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint32)
+            for k in port[key].waves.keys():
+                wvgrp.create_dataset(k,data=port[key].waves[k],dtype=np.int16)
+                lggrp.create_dataset(k,data=port[key].logics[k],dtype=np.int32)
+            g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
+            g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
+            g.attrs.create('t0',data=port[key].t0,dtype=float)
+            g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
+            g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
+            g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
+            g.create_dataset('events',data=hsdEvents)
+        return 
 
     def addsample(self,w,l):
         eventnum = len(self.addresses)

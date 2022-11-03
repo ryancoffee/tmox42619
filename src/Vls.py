@@ -1,6 +1,7 @@
 import numpy as np
 import typing
 from typing import List
+import h5py
 
 IntArray = List[int]
 
@@ -12,6 +13,21 @@ class Vls:
         self.vc = [[]]
         self.vs = [[]]
         self.initState = True
+        return
+
+    @classmethod
+    def update_h5(cls,f,spect,vlsEvents):
+        grpvls = None
+        if 'vls' in f.keys():
+            grpvls = f['vls']
+        else:
+            grpvls = f.create_group('vls')
+
+        grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
+        grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
+        grpvls.create_dataset('sum',data=spect.vs,dtype=np.uint64)
+        grpvls.attrs.create('size',data=spect.vsize,dtype=np.int32)
+        grpvls.create_dataset('events',data=vlsEvents)
         return
 
     def process_list(self, vlswvs: List[IntArray],max_len):
