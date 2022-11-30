@@ -1,4 +1,11 @@
 # Hacking multicolor
+## Nitrogen
+Hacking the two-color from runs 316 and 313 for Razib SASE reconstruction with Auger.  
+
+runs: 313 316 315 314
+photon  energies:408 404 408 408
+rets: 300 300 350 370
+
 ## Argon
 Photonenergies 600eV, 500eV, 400eV, 700eV  
 All 0V retardation: Runs 7 21 36 59    
@@ -8,6 +15,7 @@ All 0V retardation: Runs 7 21 36 59
 175V retardation: Runs 11 29 --
 
 Careful, the runs of 100eV different photon energies had different vls pitches, so that needs to be calibrated instead of blindly added as doing now.  
+
 
 ## Neon
 Watch it... vls pitch changed between run 86 and 87... careful!  

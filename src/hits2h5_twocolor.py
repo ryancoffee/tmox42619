@@ -109,45 +109,17 @@ def main():
     hsdEvents = []
     ebeamEvents = []
     gmdEvents = []
-
     runstrings = ['%03i'%i for i in runnums]
     outname = '%s/hits.%s.runs_'%(scratchdir,expname) + '-'.join(runstrings) + '.h5'
-
-    
     print('chans: ',chans)
     for eventnum in range(nshots): # careful, going to pull shots as if from same event... so not processing evt by evt anymore
         evts = [next(r.events()) for r in runs]
-        select = 1+int(rng.uniform()*(len(runnums)-2))
-        chooseevts = rng.choice(evts,select)
-
-        nedges_totals = []
-        if runhsd:
-    
-            ''' HSD-Abaco section '''
-            for key in chans.keys(): # here key means 'port number'
-                #try:
-                ss = [np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) for evt in chooseevts]
-                port[key].process_list(ss,max_len=len(runs))
-
-            hsdEvents += [eventnum]
-
-            if eventnum<10:
-                print('ports = %s'%([k for k in chans.keys()]))
-            if eventnum<100:
-                if eventnum%10<1: 
-                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
-            elif eventnum<1000:
-                if eventnum%100<1: 
-                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
-            else:
-                if eventnum%1000<1: 
-                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
 
         if rungmd:
             ''' GMD specific section '''
             try:
                 goodchoice = True
-                ens = [gmd.raw.energy(evt) for evt in chooseevts]
+                ens = [gmd.raw.energy(evt) for evt in evts]
                 for e in ens:
                     if e==None or str(e)=='nan':
                         goodchoice = False
@@ -156,7 +128,7 @@ def main():
                     gmd.process_list(ens,max_len=len(runs))
                     gmdEvents += [eventnum]
                 else:
-                    print(eventnum,"skipping since badchoice on chooseevts")
+                    print(eventnum,"skipping since badchoice on evts")
                     continue
             except:
                 print(eventnum,"skipping, GMD failed as None or 'nan' for unkiwn opaque reason")
@@ -172,7 +144,7 @@ def main():
                 #    print(eventnum,'skip per negative vls')
                 #    #eventnum += 1
                 #    continue
-                spect.process_list([np.squeeze(vls.raw.value(evt)) for evt in chooseevts],max_len=len(runs))
+                spect.process_list([np.squeeze(vls.raw.value(evt)) for evt in evts],max_len=len(runs))
                 vlsEvents += [eventnum]
                 #spect.print_v()
             except:
@@ -182,12 +154,34 @@ def main():
         if runebeam:
                 ''' Ebeam specific section '''
                 try:
-                    ebunch.process_list([ebeam.raw.ebeamL3Energy(evt)+0.5 for evt in chooseevts],max_len=len(runs))
+                    ebunch.process_list([ebeam.raw.ebeamL3Energy(evt) for evt in evts],max_len=len(runs))
                     ebeamEvents += [eventnum]
                 except:
                     print(eventnum,'skipping ebeam, skip per l3')
                     continue
 
+
+
+        if runhsd:
+            ''' HSD-Abaco section '''
+            for key in chans.keys(): # here key means 'port number'
+                #try:
+                ss = [np.array(hsd.raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) for evt in evts]
+                port[key].process_list(ss,max_len=len(runs))
+
+            hsdEvents += [eventnum]
+
+            if eventnum<10:
+                print('ports = %s'%([k for k in chans.keys()]))
+            if eventnum<100:
+                if eventnum%10<1: 
+                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
+            elif eventnum<1000:
+                if eventnum%100<1: 
+                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
+            else:
+                if eventnum%1000<1: 
+                    print('working event %i,\tnedges = %s'%(eventnum,[port[k].getnedges() for k in chans.keys()] ))
 
 
 
