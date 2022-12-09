@@ -9,15 +9,18 @@ from typing import List
 
 class Quantizer:
     def __init__(self,style='nonuniform',nbins=1024):
-        self.stype:str = style
+        self.style:str = style
         self.nbins:np.uint32 = nbins
         self.qbins:List[float] = []
 
     def setbins(self,data):
-        ubins = np.arange(np.min(data),np.max(data)+1)
-        csum = np.cumsum( np.histogram(data,bins=ubins)[0] )
-        yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
-        self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
+        if self.style=='nonuniform':
+            ubins = np.arange(np.min(data),np.max(data)+1)
+            csum = np.cumsum( np.histogram(data,bins=ubins)[0] )
+            yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
+            self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
+        else:
+            self.qbins = np.arange(np.min(data),np.max(data)+1)
         return self
 
     def histogram(self,data):
@@ -34,8 +37,9 @@ def main():
         print('syntax: Quantizer.py <nbins> <fname> <opt plotting? [Tt]rue>')
         return
     plotting = False
-    if len(sys.argv)>2 and (sys.argv[3] == 'True' or sys.arv[3]=='true'):
-        plotting = True
+    if len(sys.argv)>2:
+        if (sys.argv[-1] == 'True' or sys.argv[-1]=='true'):
+            plotting = True
 
     fname = sys.argv[2]
     data = {} 
@@ -43,7 +47,7 @@ def main():
     with h5py.File(fname,'r') as f:
         portkeys = [k for k in f.keys() if re.search('port',k)]
         for k in portkeys:
-            quants[k] = Quantizer('nonuniform',nbins=np.uint32(sys.argv[1]))
+            quants[k] = Quantizer(style='nonuniform',nbins=np.uint32(sys.argv[1]))
             quants[k].setbins(f[k]['tofs'][()])
             print(len(quants[k].bincenters()))
             data[k] = quants[k].histogram(f[k]['tofs'][()])
