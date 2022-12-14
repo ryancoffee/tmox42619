@@ -42,7 +42,7 @@ def main():
     rng = np.random.default_rng(seed = int(time.time()%1*1e6))
 
     if len(sys.argv)<3:
-        print('syntax: ./hits2h5_multicolor.py <nshots> <expname> <list of run numbers>')
+        print('syntax: ./hits2h5_twocolor.py <nshots> <expname> <list of run numbers>')
     expname = sys.argv[1]
     nshots = int(sys.argv[2])
     runnums = [int(r) for r in sys.argv[3:]]

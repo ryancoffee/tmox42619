@@ -7,12 +7,13 @@ IntArray = List[int]
 
 
 class Vls:
-    def __init__(self) -> None:
-        self.v = []
+    def __init__(self,thresh) -> None:
+        self.v:IntArray = []
         self.vsize = int(0)
         self.vc = [[]]
         self.vs = [[]]
         self.initState = True
+        self.vlsthresh = thresh
         return
 
     @classmethod
@@ -23,12 +24,16 @@ class Vls:
         else:
             grpvls = f.create_group('vls')
 
-        grpvls.create_dataset('data',data=spect.v,dtype=np.int16)
+        grpvls.create_dataset('data',data=spect.v,dtype=int)
         grpvls.create_dataset('centroids',data=spect.vc,dtype=np.int16)
         grpvls.create_dataset('sum',data=spect.vs,dtype=np.uint64)
         grpvls.attrs.create('size',data=spect.vsize,dtype=np.int32)
         grpvls.create_dataset('events',data=vlsEvents)
         return
+
+    def setthresh(self,x):
+        self.vlsthresh = x
+        return self
 
     def process_list(self, vlswvs: List[IntArray],max_len):
         nums = [np.sum([i*vlswv[i] for i in range(len(vlswv))]) for vlswv in vlswvs ]
@@ -46,22 +51,24 @@ class Vls:
         return self
 
     def process(self, vlswv: IntArray):
-        mean = int(np.mean(vlswv[1900:])) # this subtracts baseline
-        vlswv -= mean #vlswv-int(np.mean(vlswv[1900:])) # this subtracts baseline
+        mean = np.int16(np.mean(vlswv[1800:])) # this subtracts baseline
+        if (np.max(vlswv)-mean)<self.vlsthresh:
+            #print('%i is less than vlsthresh %i'%(np.max(vlswv)-mean,self.vlsthresh))
+            return False
         #print("processing vls",vlswv.shape[0])
         num = np.sum(np.array([i*vlswv[i] for i in range(len(vlswv))]))
         den = np.sum(vlswv)
         if self.initState:
-            self.v = [vlswv.astype(np.int16)]
+            self.v = [np.copy(vlswv-mean).astype(np.int16)]
             self.vsize = len(self.v)
             self.vc = [np.uint16(num/den)]
             self.vs = [np.uint64(den)]
             self.initState = False
         else:
-            self.v += [vlswv.astype(np.int16)]
+            self.v += [(vlswv-mean).astype(np.int16)]
             self.vc += [np.uint16(num/den)]
             self.vs += [np.uint64(den)]
-        return self
+        return True
 
     def set_initState(self,state: bool):
         self.initState = state

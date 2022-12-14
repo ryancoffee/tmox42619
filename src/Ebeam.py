@@ -17,6 +17,10 @@ class Ebeam:
         d.attrs.create('l3offset',ebunch.l3offset,dtype=np.uint16)
         return
 
+    def setoffset(self,x):
+        self.l3offset = int(x)
+        return self
+
     def process_list(self,l3list,max_len):
         if self.initState:
             self.l3 = [[np.float16((l3-self.l3offset)) for l3 in l3list] + [0 for i in range(max_len-len(l3list))]]
@@ -30,7 +34,8 @@ class Ebeam:
             self.l3 = [np.float16(l3in-self.l3offset)]
         else:
             self.l3 += [np.float16(l3in-self.l3offset)]
-        return self
+        return True
+
     def set_initState(self,state):
         self.initState = state
         return self
