@@ -62,7 +62,8 @@ def main():
         ############################################
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files'
-    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files'
+    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files'
+    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_debug/h5files'
 
     if len(sys.argv)<3:
         print('syntax: ./hits2h5.py <nshots> <expname> <list of run numbers>')
@@ -72,7 +73,7 @@ def main():
     outnames = ['%s/hits.%s.run_%03i.h5'%(scratchdir,expname,r) for r in runnums]
 
     _=[print('starting analysis exp %s for run %i'%(expname,int(r))) for r in runnums]
-    cfgname = '%s/%s.hsdconfig.h5'%(scratchdir,expname)
+    cfgname = '%s/%s.configs.h5'%(scratchdir,expname)
     params = fillconfigs(cfgname)
     chans = params['chans']
     t0s = params['t0s']
@@ -188,7 +189,9 @@ def main():
             if runebeam:
                 ''' Ebeam specific section '''
                 thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
-                thisl3 += 0.5
+                if type(thisl3)==None:
+                    print(eventnum,'l3 is None')
+                    continue
                 if ebunch[r].process(thisl3):
                     ebeamEvents += [eventnum]
                 else:
@@ -198,22 +201,27 @@ def main():
             if runhsd:
     
                 ''' HSD-Abaco section '''
+                goodevents = 0
                 for key in chans.keys(): # here key means 'port number'
-                    #try:
-                    s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-                    port[r][key].process(s)
-
-                    if init:
-                        init = False
-                        ebunch[r].set_initState(False)
-                        spect[r].set_initState(False)
-                        for key in chans.keys():
-                            port[r][key].set_initState(False)
-                    #except:
-                     #   print(eventnum, 'failed hsd for some reason')
-                      #  continue
-
+                    try:
+                        s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+                        if port[r][key].process(s):
+                            goodevents += 1
+                        else:
+                            print(eventnum, 'hsd process == False for %s'%key)
+                            continue
+                    except:
+                        print(eventnum, 'failed hsd for some reason')
+                        continue
                 hsdEvents += [eventnum]
+
+                if init:
+                    init = False
+                    ebunch[r].set_initState(False)
+                    spect[r].set_initState(False)
+                    for key in chans.keys():
+                        port[r][key].set_initState(False)
+
 
                 if eventnum<2:
                         print('ports = %s'%([k for k in chans.keys()]))

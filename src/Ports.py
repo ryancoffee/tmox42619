@@ -239,7 +239,7 @@ class Port:
                 self.nedges += [int(ne)]
                 self.tofs += e
                 self.slopes += de
-        return self
+        return True
 
     def process(self,s):
         e = []
@@ -281,7 +281,7 @@ class Port:
                 self.nedges += [int(ne)]
                 self.tofs += e
                 self.slopes += de
-        return self
+        return True
 
     def set_initState(self,state=True):
         self.initState = state
