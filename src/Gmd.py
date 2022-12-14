@@ -26,11 +26,13 @@ class Gmd:
         return self
 
     def process(self,enin):
+        if enin<0:
+            return False
         if self.initState:
             self.en = [np.uint16(enin*1000)]
         else:
             self.en += [np.uint16(enin*1000)]
-        return self
+        return True
     def set_initState(self,state):
         self.initState = state
         return self

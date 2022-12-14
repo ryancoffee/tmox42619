@@ -124,7 +124,7 @@ def main():
             ebeams += [runs[r].Detector('ebeam')]
         if runxtcav and 'xtcav' in runs[r].detnames:
             xtcavs += [runs[r].Detector('xtcav')]
-        if rungmd and 'gms' in runs[r].detnames:
+        if rungmd and 'gmd' in runs[r].detnames:
             gmds += [runs[r].Detector('gmd')]
 
 ####### HERE HERE HERE HERE ###########
@@ -188,10 +188,10 @@ def main():
 
             if runebeam:
                 ''' Ebeam specific section '''
-                thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
-                if type(thisl3)==None:
-                    print(eventnum,'l3 is None')
+                if type(ebeams[r]) == None:
+                    print(eventnum,'ebeam is None')
                     continue
+                thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
                 if ebunch[r].process(thisl3):
                     ebeamEvents += [eventnum]
                 else:
