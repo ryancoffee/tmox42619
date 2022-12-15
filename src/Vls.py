@@ -2,8 +2,7 @@ import numpy as np
 import typing
 from typing import List
 import h5py
-
-IntArray = List[int]
+import sys
 
 def getcentroid(data,pct=.8):
     csum = np.cumsum(data.astype(float))
@@ -17,7 +16,7 @@ def getcentroid(data,pct=.8):
 
 class Vls:
     def __init__(self,thresh) -> None:
-        self.v:IntArray = []
+        self.v = []
         self.vsize = int(0)
         self.vc = [[]]
         self.vs = [[]]
@@ -44,7 +43,7 @@ class Vls:
         self.vlsthresh = x
         return self
 
-    def process_list(self, vlswvs: List[IntArray],max_len):
+    def process_list(self, vlswvs,max_len):
         nums = [np.sum([i*vlswv[i] for i in range(len(vlswv))]) for vlswv in vlswvs ]
         dens = [np.sum(vlswv) for vlswv in vlswvs]
         if self.initState:
@@ -60,22 +59,28 @@ class Vls:
         return self
 
 
-    def process(self, vlswv: IntArray):
-        mean = np.int16(np.mean(vlswv[1800:])) # this subtracts baseline
-        if (np.max(vlswv)-mean)<self.vlsthresh:
+    def process(self, vlswv):
+        mean = np.int16(0)
+        try:
+            mean = np.int16(np.mean(vlswv[1800:])) # this subtracts baseline
+        except:
+            print('Damnit, Vls!')
             return False
-        d = np.copy(vlswv-mean).astype(np.int16)
-        c,s = getcentroid(d,pct=0.8)
-        if self.initState:
-            self.v = [d]
-            self.vsize = len(self.v)
-            self.vc = [np.float16(c)]
-            self.vs = [np.uint64(s)]
-            self.initState = False
         else:
-            self.v += [d]
-            self.vc += [np.float16(c)]
-            self.vs += [np.uint64(s)]
+            if (np.max(vlswv)-mean)<self.vlsthresh:
+                return False
+            d = np.copy(vlswv-mean).astype(np.int16)
+            c,s = getcentroid(d,pct=0.8)
+            if self.initState:
+                self.v = [d]
+                self.vsize = len(self.v)
+                self.vc = [np.float16(c)]
+                self.vs = [np.uint64(s)]
+                self.initState = False
+            else:
+                self.v += [d]
+                self.vc += [np.float16(c)]
+                self.vs += [np.uint64(s)]
         return True
 
     def set_initState(self,state: bool):

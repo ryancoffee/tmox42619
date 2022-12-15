@@ -44,7 +44,7 @@ class Quantizer:
     @classmethod
     def loadH5(cls,fname):
         with h5py.File(fname,'r') as f:
-            q = cls(style=f['qbins'].attrs['style'],f['qbins'].attrs['nbins'])
+            q = cls(style=f['qbins'].attrs['style'],nbins=f['qbins'].attrs['nbins'])
             q.copybins(f['qbins'][()])
         return q
 

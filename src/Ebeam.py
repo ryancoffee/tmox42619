@@ -30,12 +30,16 @@ class Ebeam:
         return self
 
     def process(self,l3in):
-        if ((type(l3in) == None) or (l3in == None)):
+        try:
+            d = np.float16(float(l3in)-float(self.l3offset))
+        except:
+            print('Damnit, Ebeam!')
             return False
-        if self.initState:
-            self.l3 = [np.float16(l3in-float(self.l3offset))]
         else:
-            self.l3 += [np.float16(l3in-float(self.l3offset))]
+            if self.initState:
+                self.l3 = [d]
+            else:
+                self.l3 += [d]
         return True
 
     def set_initState(self,state):
