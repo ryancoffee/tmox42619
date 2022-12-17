@@ -1,14 +1,23 @@
 #Vernier scanning res-Auger N2O
+ports 0, 1, 12, 14, 15 look pretty good to do in order for plotting with title '0,pi/8,pi/4,3pi/8,pi/2', maybe try using a vector plot in latex.  
+
 ```bash
-sbatch -p psanaq --mem-per-cpu=16GB --gpus-per-node=0 --wrap='/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py 35000 tmox42619 316 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242'
+sbatch -p psanaq --mem-per-cpu=16GB --gpus-per-node=0 --wrap='/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py 35000 tmox42619 313 316'
+sbatch -p psanaq --mem-per-cpu=16GB --gpus-per-node=0 --wrap='/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py 35000 tmox42619 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242'
 sbatch -p psanaq --mem-per-cpu=16GB --gpus-per-node=0 --wrap='/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py 35000 tmox42619 243 244 245 246'
 sbatch -p psanaq --mem-per-cpu=16GB --gpus-per-node=0 --wrap='/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py 35000 tmox42619 247 248 249 250 251 252 253 254'
 sbatch -p psanaq --mem-per-cpu=16GB --gpus-per-node=0 --wrap='/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py 35000 tmox42619 255 256 258 259 260 261 262 263 257'
 /cds/home/c/coffee/analysis_2022/x42619/src/quantizeVls.py 256 128 /reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files/hits.tmox42619.run_22[0-5].h5
+/cds/home/c/coffee/analysis_2022/x42619/src/quantizeVls.py 256 64 /reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files/hits.tmox42619.run_22[013456789].h5 /reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files/hits.tmox42619.run_24[0-2].h5 /reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files/hits.tmox42619.run_23[2-4].h5
 ```
+Runs 219-231 are vernier around 532eV-540eV VRET 75V
+Runs 232-242 are vernier around 527eV-535eV VRET 75V
+Runs 202-206 are at 450 VRET marchine 545-540eV photons, then 207-218 are 450V retardation with vernier, use these for Augers.  
+Runs 187-200 are 0 VRET but marching down from 575eV-545eV photons, VLS should be fixed.  
+Runs 169-182 the VLSpitch was different, but 600eV photons for retardations from 0V to 55V.  
 
 # Hacking multicolor
-## Nitrogen (maybe N-=edge of N2O
+## Nitrogen (maybe N-=edge of N2O)
 Hacking the two-color from runs 316 and 313 for Razib SASE reconstruction with Auger.  
 
 runs: 313 316 315 314
