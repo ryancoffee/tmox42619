@@ -16,6 +16,13 @@ Runs 202-206 are at 450 VRET marchine 545-540eV photons, then 207-218 are 450V r
 Runs 187-200 are 0 VRET but marching down from 575eV-545eV photons, VLS should be fixed.  
 Runs 169-182 the VLSpitch was different, but 600eV photons for retardations from 0V to 55V.  
 
+#Non-vernier scans in Neon  
+82-86 have VLS-pitch 6.9, but 87-90,93-97 use VLS-pitch 6.8, so we need to correct for this when sorting on vls centroids.
+86 and 87 seem to have index out of range.  
+
+I have haradcoded a vls pitch correction to quantizeVls.py.  
+
+
 # Hacking multicolor
 ## Nitrogen (maybe N-=edge of N2O)
 Hacking the two-color from runs 316 and 313 for Razib SASE reconstruction with Auger.  
