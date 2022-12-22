@@ -5,6 +5,10 @@ import h5py
 from scipy import tanh
 import math
 
+def randomround(x:float,rng):
+    return (int(v) + int(v%1>rng.random()))
+
+
 def checkdet(runlist,detname):
     for r in runlist:
         if not detname in r.detnames:

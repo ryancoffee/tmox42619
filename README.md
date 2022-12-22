@@ -17,10 +17,11 @@ Runs 187-200 are 0 VRET but marching down from 575eV-545eV photons, VLS should b
 Runs 169-182 the VLSpitch was different, but 600eV photons for retardations from 0V to 55V.  
 
 #Non-vernier scans in Neon  
-82-86 have VLS-pitch 6.9, but 87-90,93-97 use VLS-pitch 6.8, so we need to correct for this when sorting on vls centroids.
-86 and 87 seem to have index out of range.  
+Ugh... need to compute centroids for Neon only above 1000, or alternatively below 512 on VLS except for run 95 which was lowers 850eV photon energy.  
 
-I have haradcoded a vls pitch correction to quantizeVls.py.  
+82-86 have VLS-pitch 6.9, but 87-90,93-97 use VLS-pitch 6.8, so we need to correct for this when sorting on vls centroids, the correction is +142 indices.
+
+I have hardcoded a vls pitch correction in quantizeVls.py.  
 
 
 # Hacking multicolor

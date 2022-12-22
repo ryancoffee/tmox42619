@@ -20,6 +20,7 @@ def fillconfigs(cfgname):
         params['inflate'] = f.attrs['inflate']
         params['expand'] = f.attrs['expand']
         params['vlsthresh'] = f.attrs['vlsthresh']
+        params['vlswin'] = f.attrs['vlswin']
         params['l3offset'] = f.attrs['l3offset']
         for p in f.keys():
             m = re.search('^\w+_(\d+)$',p)
@@ -62,7 +63,8 @@ def main():
         ############################################
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files'
-    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files'
+    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files'
+    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier_2000vlsthresh/h5files'
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_debug/h5files'
 
     if len(sys.argv)<3:
@@ -83,6 +85,7 @@ def main():
 
 
     spect = [Vls(params['vlsthresh']) for r in runnums]
+    _ = [s.setwin(params['vlswin'][0],params['vlswin'][1]) for s in spect]
     #_ = [s.setthresh(params['vlsthresh']) for s in spect]
     ebunch = [Ebeam() for r in runnums]
     _ = [e.setoffset(params['l3offset']) for e in ebunch]
@@ -126,9 +129,6 @@ def main():
             xtcavs += [runs[r].Detector('xtcav')]
         if rungmd and 'gmd' in runs[r].detnames:
             gmds += [runs[r].Detector('gmd')]
-
-####### HERE HERE HERE HERE ###########
-####### finish working with lists of runs ###
 
         wv = {}
         wv_logic = {}

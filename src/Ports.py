@@ -1,10 +1,9 @@
 import numpy as np
 from scipy.fftpack import dct,dst
-from utils import mypoly,tanhInt
+from utils import mypoly,tanhInt,randomround
 import h5py
     
 #def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=256,stride=128):
-rng = np.random.default_rng()
 
 def dctLogicInt(s,inflate=1,nrolloff=128):
     '''
@@ -68,8 +67,6 @@ def dctLogic(s,inflate=1,nrolloff=128):
     result = y*dy   # constructing the sig*deriv waveform 
     return result
 
-
-
 def scanedges_simple(d,minthresh,expand=1):
     tofs = []
     slopes = []
@@ -85,7 +82,7 @@ def scanedges_simple(d,minthresh,expand=1):
         x0 = stop - 1./float(d[stop]-d[stop-1])*d[stop] 
         i += 1
         v = expand*float(x0)
-        tofs += [np.int32(v) + np.int32(rng.random()<v%1)] 
+        tofs += [np.int32(randomround(v))] 
         slopes += [d[stop]-d[stop-1]] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
     return tofs,slopes,len(tofs)
 
@@ -223,20 +220,20 @@ class Port:
             self.sz = ss[0].shape[0]*self.inflate*self.expand
             self.tofs = [0]
             if ne<1:
-                self.addresses = [int(0)]
-                self.nedges = [int(0)]
+                self.addresses = [np.uint64(0)]
+                self.nedges = [np.uint32(0)]
             else:
-                self.addresses = [int(1)]
-                self.nedges = [int(ne)]
+                self.addresses = [np.uint64(1)]
+                self.nedges = [np.uint32(ne)]
                 self.tofs += e
                 self.slopes += de
         else:
             if ne<1:
-                self.addresses += [int(0)]
-                self.nedges += [int(0)]
+                self.addresses += [np.uint64(0)]
+                self.nedges += [np.uint32(0)]
             else:
-                self.addresses += [int(len(self.tofs))]
-                self.nedges += [int(ne)]
+                self.addresses += [np.uint64(len(self.tofs))]
+                self.nedges += [np.uint32(ne)]
                 self.tofs += e
                 self.slopes += de
         return True
@@ -261,24 +258,24 @@ class Port:
             self.sz = s.shape[0]*self.inflate*self.expand
             self.tofs = [0]
             if ne<1:
-                self.addresses = [int(0)]
-                self.nedges = [int(0)]
+                self.addresses = [np.uint64(0)]
+                self.nedges = [np.uint32(0)]
                 self.tofs += []
                 self.slopes += []
             else:
-                self.addresses = [int(1)]
-                self.nedges = [int(ne)]
+                self.addresses = [np.uint64(1)]
+                self.nedges = [np.uint32(ne)]
                 self.tofs += e
                 self.slopes += de
         else:
             if ne<1:
-                self.addresses += [int(0)]
-                self.nedges += [int(0)]
+                self.addresses += [np.uint64(0)]
+                self.nedges += [np.uint32(0)]
                 self.tofs += []
                 self.slopes += []
             else:
-                self.addresses += [int(len(self.tofs))]
-                self.nedges += [int(ne)]
+                self.addresses += [np.uint64(len(self.tofs))]
+                self.nedges += [np.uint32(ne)]
                 self.tofs += e
                 self.slopes += de
         return True
@@ -297,22 +294,3 @@ class Port:
             return 0
         return self.nedges[-1]
 
-
-
-'''
-def dctLogic(s,inflate=1,nrolloff=128):
-    rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))
-    sz_roll = rolloff_vec.shape[0] 
-    sz = s.shape[0]
-    wave = np.append(s,np.flip(s,axis=0))
-    WAVE = dct(wave,type=2)
-    #WAVE = dct(wave)
-    #WAVE = rollon(WAVE,4)
-    WAVE[-sz_roll:] *= rolloff_vec
-    if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
-        WAVE = np.append(WAVE,np.zeros((inflate-1)*WAVE.shape[0])) # adding zeros to the end of the transfored vector
-    DWAVE = np.copy(WAVE) # preparing to also make a derivative
-    DWAVE[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
-    return dct(WAVE,type=3)[:inflate*sz]*dct(DWAVE,type=4)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
-    #return dct(WAVE,type=3)[:inflate*sz]*dst(DWAVE,type=3)[:inflate*sz]/(4*sz**2) # constructing the sig*deriv waveform 
-'''

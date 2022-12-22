@@ -22,6 +22,8 @@ class Vls:
         self.vs = [[]]
         self.initState = True
         self.vlsthresh = thresh
+        self.winstart = 0
+        self.winstop = 1<<11
         return
 
     @classmethod
@@ -58,6 +60,10 @@ class Vls:
             self.vs += [[np.uint64(d) for d in dens] + [0 for i in range(max_len-len(nums))] ]
         return self
 
+    def setwin(self,low,high):
+        self.winstart = int(low)
+        self.winstop = int(high)
+        return self
 
     def process(self, vlswv):
         mean = np.int16(0)
@@ -70,7 +76,7 @@ class Vls:
             if (np.max(vlswv)-mean)<self.vlsthresh:
                 return False
             d = np.copy(vlswv-mean).astype(np.int16)
-            c,s = getcentroid(d,pct=0.8)
+            c,s = getcentroid(d[self.winstart:self.winstop],pct=0.8)
             if self.initState:
                 self.v = [d]
                 self.vsize = len(self.v)
