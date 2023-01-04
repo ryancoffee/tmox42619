@@ -8,14 +8,14 @@ from Quantizers import Quantizer
 
 def main():
     if len(sys.argv)<3:
-        print('syntax: quantizeHits.py <ntofbins> <nvlsbins> <fnames>')
+        print('syntax: quantizeVls.py <ntofbins> <nvlsbins> <fnames>')
         return
 
     donorm = False
     fnames = sys.argv[3:]
     ntofbins = np.uint32(sys.argv[1])
     nvlsbins = np.uint32(sys.argv[2])
-    vlsoffset = 800 
+    vlsoffset = 256 
     tofs = {} 
     addresses = {} 
     nedges = {} 
@@ -56,6 +56,11 @@ def main():
         if len(tofs[k])>1:
             quants[k].setbins(data=tofs[k])
 
+    h,b = np.histogram(vlscenters,100)
+    plt.plot(b[:-1],h,'.')
+    plt.show()
+
+
     vlsbins = [np.uint32(max(0,min(int(v-vlsoffset)>>1,nvlsbins-1))) for v in vlscenters]
     print('len(vlsbins) = %i'%len(vlsbins))
     vlsnorm = np.zeros(nvlsbins)
@@ -71,7 +76,7 @@ def main():
                 print('%i vlsbin failed'%vlsbin)
 
     crop=2
-    ycrop=56
+    ycrop=1
     fig1,ax = plt.subplots(2,4,figsize=(18,9))
     for i,k in enumerate(portkeys):
         if len(tofs[k])>1:
@@ -108,6 +113,7 @@ def main():
         #outname = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/ascii/test_%s_hist.dat'%(k)
 
 
+    '''
     for k in ['port_0','port_1','port_14','port_5','port_12']:
         fg,ax = plt.subplots(1,1,figsize=(5,4))
         X,Y = np.meshgrid(quants[k].binedges()[1:-crop],np.arange(nvlsbins+1-ycrop))
@@ -129,6 +135,7 @@ def main():
         plt.savefig('%s_qbins_oneto%i.png'%(k,crop))
         #plt.savefig('%s_qbins_oneto%i_raw.png'%(k,crop))
         plt.show()
+        '''
 
     return
 

@@ -6,7 +6,7 @@ from scipy import tanh
 import math
 
 def randomround(x:float,rng):
-    return (int(v) + int(v%1>rng.random()))
+    return (int(x) + int(x%1>rng.random()))
 
 
 def checkdet(runlist,detname):

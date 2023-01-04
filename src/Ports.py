@@ -2,6 +2,9 @@ import numpy as np
 from scipy.fftpack import dct,dst
 from utils import mypoly,tanhInt,randomround
 import h5py
+import time
+
+
     
 #def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=256,stride=128):
 
@@ -67,25 +70,6 @@ def dctLogic(s,inflate=1,nrolloff=128):
     result = y*dy   # constructing the sig*deriv waveform 
     return result
 
-def scanedges_simple(d,minthresh,expand=1):
-    tofs = []
-    slopes = []
-    sz = d.shape[0]
-    i = 10
-    while i < sz-10:
-        while d[i] > minthresh:
-            i += 1
-            if i==sz-10: return tofs,slopes,len(tofs)
-        while i<sz-10 and d[i]<0:
-            i += 1
-        stop = i
-        x0 = stop - 1./float(d[stop]-d[stop-1])*d[stop] 
-        i += 1
-        v = expand*float(x0)
-        tofs += [np.int32(randomround(v))] 
-        slopes += [d[stop]-d[stop-1]] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
-    return tofs,slopes,len(tofs)
-
 def scanedges(d,minthresh,expand=4):
     tofs = []
     slopes = []
@@ -128,6 +112,7 @@ class Port:
     # hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
     def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-2400,scale=1,inflate=1,expand=1,nrolloff=256): # exand is for sake of Newton-Raphson
+        self.rng = np.random.default_rng( time.time_ns()%(1<<8) )
         self.portnum = portnum
         self.hsd = hsd
         self.t0 = t0
@@ -196,6 +181,26 @@ class Port:
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         return self
 
+
+    def scanedges_simple(self,d):
+        tofs = []
+        slopes = []
+        sz = d.shape[0]
+        i = 10
+        while i < sz-10:
+            while d[i] > self.logicthresh:
+                i += 1
+                if i==sz-10: return tofs,slopes,len(tofs)
+            while i<sz-10 and d[i]<0:
+                i += 1
+            stop = i
+            x0 = float(stop - 1)/float(d[stop]-d[stop-1])*d[stop] 
+            i += 1
+            v = self.expand*float(x0)
+            tofs += [np.int32(randomround(v,self.rng))] 
+            slopes += [d[stop]-d[stop-1]] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
+        return tofs,slopes,len(tofs)
+
     def process_list(self,ss,max_len):
         e = []
         de = []
@@ -210,7 +215,7 @@ class Port:
                     b = np.mean(s[adc:self.baselim+adc:self.nadcs])
                     s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale ) - int(self.scale*b)
                 logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.nrolloff)
-                edene = scanedges_simple(logic,self.logicthresh,self.expand)
+                edene = self.scanedges_simple(logic)
                 if edene[2]>0:
                     e += edene[0]
                     de += edene[1]
@@ -251,7 +256,7 @@ class Port:
                 b = np.mean(s[adc:self.baselim+adc:self.nadcs])
                 s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale) - int(self.scale*b)
             logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
-            e,de,ne = scanedges_simple(logic,self.logicthresh,self.expand) # scan the logic vector for hits
+            e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
             self.addsample(s,logic)
 
         if self.initState:
