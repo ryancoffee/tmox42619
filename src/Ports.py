@@ -1,12 +1,34 @@
 import numpy as np
-from scipy.fftpack import dct,dst
-from utils import mypoly,tanhInt,randomround
+from scipy.fftpack import dct,dst,rfft,irfft,fft,ifft
+from utils import mypoly,tanhInt,tanhFloat,randomround
 import h5py
 import time
-
+from typing import Type,List
 
     
 #def dctLogic_windowed(s,inflate=1,nrolloff=0,winsz=256,stride=128):
+
+def cfdLogic(s,invfrac=1<<2,offset=10):
+    sz = s.shape[0]
+    result = np.zeros(sz,dtype=np.int32)
+    result[:-offset] = (1<<invfrac)*s[offset:]-s[:-offset]
+    return result
+
+def fftLogic(s,inflate=1,nrolloff=128):
+    sz = s.shape[0]
+    result = np.zeros(sz*inflate,dtype=np.int32)
+    rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff<<1,dtype=float)*2*np.pi/float(nrolloff))) # careful, operating on left and right of middle indices in one go...2pi now not pi.
+    smirror = np.append(s,np.flip(s,axis=0)).astype(float)
+    S = fft(smirror,axis=0)
+    S[sz-nrolloff:sz+nrolloff] *= rolloff_vec
+    if inflate>1:
+        S = np.concatenate((S[:sz],np.zeros(2*sz*(inflate-1),dtype=complex),S[sz:]))
+    Sy = np.copy(S)*sz
+    S[:sz] *= 1j*np.arange(sz,dtype=float)/(sz)
+    S[-sz:] *= np.flip(-1j*np.arange(sz,dtype=float)/(sz),axis=0)
+    y = ifft(Sy,axis=0).real[:(inflate*sz)]
+    dy = ifft(S,axis=0).real[:(inflate*sz)]
+    return -y*dy
 
 def dctLogicInt(s,inflate=1,nrolloff=128):
     '''
@@ -15,8 +37,8 @@ def dctLogicInt(s,inflate=1,nrolloff=128):
     '''
     sz = s.shape[0]
     result = np.zeros(sz*inflate,dtype=np.int32)
-    ampscale = 2**8
-    rolloff_vec = (ampscale*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))).astype(np.int32)
+    ampscale = 1<<8
+    rolloff_vec = ((ampscale>>1)*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))).astype(np.int64)
     sc = np.append(s,np.flip(s,axis=0)).astype(np.int32)
     ss = np.append(s,np.flip(-1*s,axis=0)).astype(np.int32)
     wc = dct(sc,type=2,axis=0).astype(np.int64)
@@ -111,7 +133,7 @@ class Port:
     # Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
     # hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-    def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-2400,scale=1,inflate=1,expand=1,nrolloff=256): # exand is for sake of Newton-Raphson
+    def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-1*(1<<20),inflate=1,expand=1,nrolloff=256): # exand is for sake of Newton-Raphson
         self.rng = np.random.default_rng( time.time_ns()%(1<<8) )
         self.portnum = portnum
         self.hsd = hsd
@@ -120,7 +142,6 @@ class Port:
         self.baselim = baselim
         self.logicthresh = logicthresh
         self.initState = True
-        self.scale = scale
         self.inflate = inflate
         self.expand = expand
         self.nrolloff = nrolloff
@@ -150,8 +171,8 @@ class Port:
             g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
             g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint32)
             for k in port[key].waves.keys():
-                wvgrp.create_dataset(k,data=port[key].waves[k],dtype=np.int16)
-                lggrp.create_dataset(k,data=port[key].logics[k],dtype=np.int32)
+                wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
+                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int16),dtype=np.int32)
             g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
             g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
             g.attrs.create('t0',data=port[key].t0,dtype=float)
@@ -186,7 +207,7 @@ class Port:
         tofs = []
         slopes = []
         sz = d.shape[0]
-        i = 10
+        i:int = int(10)
         while i < sz-10:
             while d[i] > self.logicthresh:
                 i += 1
@@ -194,11 +215,13 @@ class Port:
             while i<sz-10 and d[i]<0:
                 i += 1
             stop = i
-            x0 = float(stop - 1)/float(d[stop]-d[stop-1])*d[stop] 
+            x0 = float(stop-1) 
+            #x0 = float(stop - 1)/float(d[stop]-d[stop-1])*d[stop] 
             i += 1
-            v = self.expand*float(x0)
-            tofs += [np.int32(randomround(v,self.rng))] 
-            slopes += [d[stop]-d[stop-1]] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
+            v = float(self.expand)*float(x0)
+            #tofs += [np.int64(randomround(v,self.rng))] 
+            tofs += [np.int64(v)] 
+            slopes += [d[stop]-d[stop-1]] ## scaling to reign in the obscene derivatives... probably should be scaling d here instead
         return tofs,slopes,len(tofs)
 
     def process_list(self,ss,max_len):
@@ -213,8 +236,8 @@ class Port:
             for s in ss:
                 for adc in range(self.nadcs):
                     b = np.mean(s[adc:self.baselim+adc:self.nadcs])
-                    s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale ) - int(self.scale*b)
-                logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.nrolloff)
+                    s[adc::self.nadcs] = (s[adc::self.nadcs]) - int(b)
+                logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff)
                 edene = self.scanedges_simple(logic)
                 if edene[2]>0:
                     e += edene[0]
@@ -244,18 +267,19 @@ class Port:
         return True
 
     def process(self,s):
-        e = []
+        e:List[np.int32] = []
         de = []
         ne = 0
         if type(s) == type(None):
-            e = []
+            e:List[np.int32] = []
             de = []
             ne = 0
         else:
             for adc in range(self.nadcs):
                 b = np.mean(s[adc:self.baselim+adc:self.nadcs])
-                s[adc::self.nadcs] = (s[adc::self.nadcs] * self.scale) - int(self.scale*b)
-            logic = dctLogicInt(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
+                s[adc::self.nadcs] = (s[adc::self.nadcs] ) - np.int32(b)
+            logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
+            #logic = cfdLogic(s,invfrac=4,offset=10) #produce the "logic vector"
             e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
             self.addsample(s,logic)
 
@@ -264,23 +288,23 @@ class Port:
             self.tofs = [0]
             if ne<1:
                 self.addresses = [np.uint64(0)]
-                self.nedges = [np.uint32(0)]
+                self.nedges = [np.uint64(0)]
                 self.tofs += []
                 self.slopes += []
             else:
                 self.addresses = [np.uint64(1)]
-                self.nedges = [np.uint32(ne)]
+                self.nedges = [np.uint64(ne)]
                 self.tofs += e
                 self.slopes += de
         else:
             if ne<1:
                 self.addresses += [np.uint64(0)]
-                self.nedges += [np.uint32(0)]
+                self.nedges += [np.uint64(0)]
                 self.tofs += []
                 self.slopes += []
             else:
                 self.addresses += [np.uint64(len(self.tofs))]
-                self.nedges += [np.uint32(ne)]
+                self.nedges += [np.uint64(ne)]
                 self.tofs += e
                 self.slopes += de
         return True

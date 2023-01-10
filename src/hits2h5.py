@@ -90,14 +90,11 @@ def main():
     ebunch = [Ebeam() for r in runnums]
     _ = [e.setoffset(params['l3offset']) for e in ebunch]
     port = [{} for r in runnums] 
-    scale = int(1) # to better fill 16 bit int
     inflate = params['inflate']
-    for key in logicthresh.keys():
-        logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
     for r in range(len(runnums)):
         for key in chans.keys():
-            port[r][key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,scale=scale,nrolloff=2**6)
+            port[r][key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,nrolloff=2**6)
 
     ds = [psana.DataSource(exp=expname,run=r) for r in runnums]
 
@@ -203,16 +200,16 @@ def main():
                 ''' HSD-Abaco section '''
                 goodevents = 0
                 for key in chans.keys(): # here key means 'port number'
-                    try:
-                        s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-                        if port[r][key].process(s):
-                            goodevents += 1
-                        else:
-                            print(eventnum, 'hsd process == False for %s'%key)
-                            continue
-                    except:
-                        print(eventnum, 'failed hsd for some reason')
+                    #try:
+                    s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+                    if port[r][key].process(s):
+                        goodevents += 1
+                    else:
+                        print(eventnum, 'hsd process == False for %s'%key)
                         continue
+                    #except:
+                    #    print(eventnum, 'failed hsd for some reason')
+                    #    continue
                 hsdEvents += [eventnum]
 
                 if init:

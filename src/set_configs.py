@@ -7,7 +7,10 @@ def main():
     chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
     # second knee # logicthresh = {0:-2000000, 1:-1500000, 2:-800000, 4:-800000, 5:-2500000, 12:-3000000, 13:-2300000, 14:-2100000, 15:-2000000, 16:-3300000} # set by knee (log-log) in val histogram
     #logicthresh = {0:-(2**20), 1:-(2**20), 2:-(2**20), 4:-(2**20), 5:-(2**20), 12:-(2**20+2**18+2**17), 13:-(2**20+2**19), 14:-(2**20+2**18), 15:-(2**20), 16:-(2**21)} # set by 1st knee (log-log) in val histogram
-    logicthresh = {0:-((1<<20)+(1<<17)), 1:-((1<<20)+(1<<17)), 2:-((1<<20)+(1<<17)), 4:-((1<<20)+(1<<17)), 5:-((1<<20)+(1<<17)), 12:-((1<<20)+(1<<18)), 13:-((1<<20)+(1<<18)), 14:-((1<<20)+(1<<18)), 15:-((1<<20)+(1<<17)), 16:-((1<<21)+(1<<20))} # set by 1st knee (log-log) in val histogram
+    #logicthresh = {0:-1*((1<<18)), 1:-1*((1<<18)), 2:-1*((1<<18)+(1<<18)), 4:-1*((1<<18)), 5:-1*((1<<18)), 12:-1*((1<<18)), 13:-1*((1<<18)), 14:-1*((1<<18)), 15:-1*((1<<18)), 16:-1*((1<<18)+(1<<17))} # set by 1st knee (log-log) in val histogram
+    logicthresh = {0:-1*((1<<23)+(1<<17)), 1:-1*((1<<23)+(1<<17)), 2:-1*((1<<23)+(1<<17)), 4:-1*((1<<23)+(1<<17)), 5:-1*((1<<23)+(1<<17)), 12:-1*((1<<23)+(1<<18)), 13:-1*((1<<23)+(1<<18)), 14:-1*((1<<23)+(1<<18)), 15:-1*((1<<23)+(1<<17)), 16:-1*((1<<23))} # set by 1st knee (log-log) in val histogram
+    for k in logicthresh.keys():
+        logicthresh[k] = logicthresh[k]>>2
     vlsthresh = 1000
     vlswin = (1024,2048)
     l3offset = 5100
@@ -21,7 +24,7 @@ def main():
 
     cfgfile = sys.argv[1]
     with h5py.File(cfgfile,'w') as f:
-        f.attrs.create('expand',4) # expand controls the fractional resolution for scanedges by scaling index values and then zero crossing round to intermediate integers.
+        f.attrs.create('expand',2) # expand controls the fractional resolution for scanedges by scaling index values and then zero crossing round to intermediate integers.
         f.attrs.create('inflate',2) # inflate pads the DCT with zeros, artificially over sampling the waveform
         f.attrs.create('vlsthresh',data=vlsthresh)
         f.attrs.create('vlswin',data=vlswin)

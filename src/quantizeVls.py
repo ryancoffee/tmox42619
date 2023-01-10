@@ -15,7 +15,7 @@ def main():
     fnames = sys.argv[3:]
     ntofbins = np.uint32(sys.argv[1])
     nvlsbins = np.uint32(sys.argv[2])
-    vlsoffset = 256 
+    vlsoffset = (256 + 64)
     tofs = {} 
     addresses = {} 
     nedges = {} 
@@ -28,7 +28,7 @@ def main():
         vlspitchcorrect = 0
         m = re.search('run_(\d+)',fname)
         if m:
-            vlspitchcorrect = 142 if int(m.group(1))<87 and int(m.group(1))>81 else 0
+            vlspitchcorrect = 110 if int(m.group(1))<87 and int(m.group(1))>81 else 0
         with h5py.File(fname,'r') as f:
             portkeys = [k for k in f.keys() if (re.search('port',k) and not re.search('_16',k) and not re.search('_2',k))]
             if len(quants.keys())==0:
@@ -60,8 +60,7 @@ def main():
     plt.plot(b[:-1],h,'.')
     plt.show()
 
-
-    vlsbins = [np.uint32(max(0,min(int(v-vlsoffset)>>1,nvlsbins-1))) for v in vlscenters]
+    vlsbins = [np.uint32(max(0,min(int(v-vlsoffset),nvlsbins-1))) for v in vlscenters]
     print('len(vlsbins) = %i'%len(vlsbins))
     vlsnorm = np.zeros(nvlsbins)
     for shot,vlsbin in enumerate(vlsbins):
@@ -87,7 +86,8 @@ def main():
                         hist[k][v,:] /= vlsnorm[v]
                     else:
                         hist[k][v,:] *= 0
-            ax[i//4,i%4].pcolor(X,Y,np.log2(hist[k][:-ycrop,1:-crop]))#,origin='lower')
+            ax[i//4,i%4].pcolor(X,Y,hist[k][:-ycrop,1:-crop])#,origin='lower')
+            #ax[i//4,i%4].pcolor(X,Y,np.log2(hist[k][:-ycrop,1:-crop]))#,origin='lower')
             ax[i//4,i%4].set_title('%s'%k)
             ax[i//4,i%4].set_xlabel('tofs')
             ax[i//4,i%4].set_ylabel('vls')

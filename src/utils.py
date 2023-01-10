@@ -2,7 +2,6 @@
 
 import numpy as np
 import h5py
-from scipy import tanh
 import math
 
 def randomround(x:float,rng):
@@ -22,9 +21,14 @@ def rollon(vec,n):
     vec[:int(n)] = vec[:int(n)]*np.arange(int(n),dtype=float)/float(n)
     return vec
 
-def tanhInt(x,bits):
-    y = 2**(bits-1)*(1+tanh(x.astype(float)))
+def tanhFloat(x,thresh=1):
+    y = 0.5*(1.0 + np.tanh(x.astype(float)/thresh))
     return y.astype(type(x[0]))
+
+def tanhInt(x,bits=8):
+    y = (1<<(bits-1))*(1+np.tanh(x.astype(float)))
+    return y.astype(type(x[0]))
+
 def pkey(p):
     return 'port_%i'%p
 
