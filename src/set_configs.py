@@ -24,8 +24,8 @@ def main():
 
     cfgfile = sys.argv[1]
     with h5py.File(cfgfile,'w') as f:
-        f.attrs.create('expand',2) # expand controls the fractional resolution for scanedges by scaling index values and then zero crossing round to intermediate integers.
-        f.attrs.create('inflate',2) # inflate pads the DCT with zeros, artificially over sampling the waveform
+        f.attrs.create('expand',4) # expand controls the fractional resolution for scanedges by scaling index values and then zero crossing round to intermediate integers.
+        f.attrs.create('inflate',2) # inflate pads the DCT(FFT) with zeros, artificially over sampling the waveform
         f.attrs.create('vlsthresh',data=vlsthresh)
         f.attrs.create('vlswin',data=vlswin)
         f.attrs.create('l3offset',data=l3offset)

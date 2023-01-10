@@ -5,7 +5,7 @@ import h5py
 import math
 
 def randomround(x:float,rng):
-    return (int(x) + int(x%1>rng.random()))
+    return (np.int64(x) + np.int64(x%1>rng.random()))
 
 
 def checkdet(runlist,detname):

@@ -92,41 +92,6 @@ def dctLogic(s,inflate=1,nrolloff=128):
     result = y*dy   # constructing the sig*deriv waveform 
     return result
 
-def scanedges(d,minthresh,expand=4):
-    tofs = []
-    slopes = []
-    sz = d.shape[0]
-    newtloops = 6
-    order = 3 # this should stay fixed, since the logic zeros crossings really are cubic polys
-    i = 10
-    while i < sz-10:
-        while d[i] > minthresh:
-            i += 1
-            if i==sz-10: return tofs,slopes,len(tofs)
-        while i<sz-10 and d[i]<d[i-1]:
-            i += 1
-        start = i-1
-        i += 1
-        while i<sz-10 and d[i]>d[i-1]:
-            i += 1
-        stop = i
-        i += 1
-        if (stop-start)<(order+1):
-            continue
-        x = np.arange(stop-start,dtype=float) # set x to index values
-        y = d[start:stop] # set y to vector values
-        x0 = float(stop)/2. # set x0 to halfway point
-        #y -= (y[0]+y[-1])/2. # subtract average (this gets rid of residual DC offsets)
-
-        theta = np.linalg.pinv( mypoly(np.array(x).astype(float),order=order) ).dot(np.array(y).astype(float)) # fit a polynomial (order 3) to the points
-        for j in range(newtloops): # 3 rounds of Newton-Raphson
-            X0 = np.array([np.power(x0,int(k)) for k in range(order+1)])
-            x0 -= theta.dot(X0)/theta.dot([i*X0[(k+1)%(order+1)] for k in range(order+1)]) # this seems like maybe it should be wrong
-        tofs += [float(start + x0)] 
-        X0 = np.array([np.power(x0,int(i)) for k in range(order+1)])
-        #slopes += [np.int64(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
-        slopes += [float((theta[1]+x0*theta[2])/2**18)] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
-    return tofs,slopes,len(tofs)
 
 class Port:
     # Note that t0s are aligned with 'prompt' in the digitizer logic signal
@@ -166,9 +131,9 @@ class Port:
                 g = f.create_group('port_%i'%(key))
                 wvgrp = g.create_group('waves')
                 lggrp = g.create_group('logics')
-            g.create_dataset('tofs',data=port[key].tofs,dtype=np.int32) 
+            g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint32) 
             g.create_dataset('slopes',data=port[key].slopes,dtype=np.int32) 
-            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
+            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint32)
             g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint32)
             for k in port[key].waves.keys():
                 wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
@@ -215,14 +180,50 @@ class Port:
             while i<sz-10 and d[i]<0:
                 i += 1
             stop = i
-            x0 = float(stop-1) 
-            #x0 = float(stop - 1)/float(d[stop]-d[stop-1])*d[stop] 
+            ''' dx / (Dy) = dx2/dy2 ; dy2*dx/Dy - dx2 ; x2-dx2 = stop - dy2*1/Dy'''
+            x0 = float(stop) - float(d[stop])/float(d[stop]-d[stop-1])
             i += 1
             v = float(self.expand)*float(x0)
-            #tofs += [np.int64(randomround(v,self.rng))] 
-            tofs += [np.int64(v)] 
+            #tofs += [np.int64(v)] 
+            tofs += [np.int64(randomround(v,self.rng))] 
             slopes += [d[stop]-d[stop-1]] ## scaling to reign in the obscene derivatives... probably should be scaling d here instead
-        return tofs,slopes,len(tofs)
+        return tofs,slopes,np.uint32(len(tofs))
+
+    def scanedges(self,d):
+        tofs = []
+        slopes = []
+        sz = d.shape[0]
+        newtloops = 6
+        order = 3 # this should stay fixed, since the logic zeros crossings really are cubic polys
+        i = 10
+        while i < sz-10:
+            while d[i] > self.logicthresh:
+                i += 1
+                if i==sz-10: return tofs,slopes,len(tofs)
+            while i<sz-10 and d[i]<d[i-1]:
+                i += 1
+            start = i-1
+            i += 1
+            while i<sz-10 and d[i]>d[i-1]:
+                i += 1
+            stop = i
+            i += 1
+            if (stop-start)<(order+1):
+                continue
+            x = np.arange(stop-start,dtype=float) # set x to index values
+            y = d[start:stop] # set y to vector values
+            x0 = float(stop)/2. # set x0 to halfway point
+            #y -= (y[0]+y[-1])/2. # subtract average (this gets rid of residual DC offsets)
+    
+            theta = np.linalg.pinv( mypoly(np.array(x).astype(float),order=order) ).dot(np.array(y).astype(float)) # fit a polynomial (order 3) to the points
+            for j in range(newtloops): # 3 rounds of Newton-Raphson
+                X0 = np.array([np.power(x0,int(k)) for k in range(order+1)])
+                x0 -= theta.dot(X0)/theta.dot([i*X0[(k+1)%(order+1)] for k in range(order+1)]) # this seems like maybe it should be wrong
+            tofs += [float(start + x0)] 
+            #X0 = np.array([np.power(x0,int(i)) for k in range(order+1)])
+            #slopes += [np.int64(theta.dot([i*X0[(i+1)%(order+1)] for i in range(order+1)]))]
+            slopes += [float((theta[1]+x0*theta[2])/2**18)] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
+        return tofs,slopes,np.uint32(len(tofs))
 
     def process_list(self,ss,max_len):
         e = []
@@ -285,26 +286,31 @@ class Port:
 
         if self.initState:
             self.sz = s.shape[0]*self.inflate*self.expand
-            self.tofs = [0]
-            if ne<1:
-                self.addresses = [np.uint64(0)]
-                self.nedges = [np.uint64(0)]
-                self.tofs += []
-                self.slopes += []
-            else:
-                self.addresses = [np.uint64(1)]
-                self.nedges = [np.uint64(ne)]
+            #self.tofs = [0]
+            #self.slopes = [0]
+            self.addresses = [np.uint64(0)]
+            self.nedges = [np.uint64(ne)]
+            #if ne<1:
+            #    self.addresses = [np.uint64(0)]
+            #    self.nedges = [np.uint64(0)]
+            #    self.tofs += []
+            #    self.slopes += []
+            #else:
+            if ne>0:
                 self.tofs += e
                 self.slopes += de
         else:
-            if ne<1:
-                self.addresses += [np.uint64(0)]
-                self.nedges += [np.uint64(0)]
-                self.tofs += []
-                self.slopes += []
-            else:
-                self.addresses += [np.uint64(len(self.tofs))]
-                self.nedges += [np.uint64(ne)]
+            self.addresses += [np.uint64(len(self.tofs))]
+            self.nedges += [np.uint64(ne)]
+            #if ne<1:
+            #    self.addresses += [np.uint64(0)]
+            #    self.nedges += [np.uint64(0)]
+            #    self.tofs += []
+            #    self.slopes += []
+            #else:
+            #    self.addresses += [np.uint64(len(self.tofs))]
+            #    self.nedges += [np.uint64(ne)]
+            if ne>0:
                 self.tofs += e
                 self.slopes += de
         return True
