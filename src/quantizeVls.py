@@ -86,8 +86,8 @@ def main():
                         hist[k][v,:] /= vlsnorm[v]
                     else:
                         hist[k][v,:] *= 0
-            ax[i//4,i%4].pcolor(X,Y,hist[k][:-ycrop,1:-crop])#,origin='lower')
-            #ax[i//4,i%4].pcolor(X,Y,np.log2(hist[k][:-ycrop,1:-crop]))#,origin='lower')
+            #ax[i//4,i%4].pcolor(X,Y,hist[k][:-ycrop,1:-crop])#,origin='lower')
+            ax[i//4,i%4].pcolor(X,Y,np.log2(hist[k][:-ycrop,1:-crop]))#,origin='lower')
             ax[i//4,i%4].set_title('%s'%k)
             ax[i//4,i%4].set_xlabel('tofs')
             ax[i//4,i%4].set_ylabel('vls')
