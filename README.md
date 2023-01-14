@@ -23,6 +23,10 @@ Ugh... need to compute centroids for Neon only above 1000, or alternatively belo
 
 I have hardcoded a vls pitch correction in quantizeVls.py.  
 
+# Raw waveforms
+Mostly this is to get everyone to see we are using very little of the uint16 bit-depth for our waveforms in abaco high sample rate digitizers (hsd).
+![Contatenated raw waveforms](./figs/samplerawvalues316.png)
+![plot](./figs/samplerawvalues.png)
 
 # Hacking multicolor
 ## Nitrogen (maybe N-=edge of N2O)
