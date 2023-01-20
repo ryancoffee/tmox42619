@@ -69,6 +69,7 @@ def main():
 
     if len(sys.argv)<3:
         print('syntax: ./hits2h5.py <nshots> <expname> <list of run numbers>')
+        return
     expname = sys.argv[2]
     nshots = int(sys.argv[1])
     runnums = [int(run) for run in sys.argv[3:]]
@@ -200,16 +201,16 @@ def main():
                 ''' HSD-Abaco section '''
                 goodevents = 0
                 for key in chans.keys(): # here key means 'port number'
-                    #try:
-                    s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-                    if port[r][key].process(s):
-                        goodevents += 1
-                    else:
-                        print(eventnum, 'hsd process == False for %s'%key)
+                    try:
+                        s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+                        if port[r][key].process(s):
+                            goodevents += 1
+                        else:
+                            print(eventnum, 'hsd process == False for %s'%key)
+                            continue
+                    except:
+                        print(eventnum, 'failed hsd for some reason')
                         continue
-                    #except:
-                    #    print(eventnum, 'failed hsd for some reason')
-                    #    continue
                 hsdEvents += [eventnum]
 
                 if init:

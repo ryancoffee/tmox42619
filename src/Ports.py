@@ -131,19 +131,19 @@ class Port:
                 g = f.create_group('port_%i'%(key))
                 wvgrp = g.create_group('waves')
                 lggrp = g.create_group('logics')
-            g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint32) 
-            g.create_dataset('slopes',data=port[key].slopes,dtype=np.int32) 
-            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint32)
-            g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint32)
+            g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint64) 
+            g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
+            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
+            g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint64)
             for k in port[key].waves.keys():
                 wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
-                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int16),dtype=np.int32)
+                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int16),dtype=np.int16)
             g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
             g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
             g.attrs.create('t0',data=port[key].t0,dtype=float)
             g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
             g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-            g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=int) ### need to also multiply by expand #### HERE HERE HERE HERE
+            g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
             g.create_dataset('events',data=hsdEvents)
         return 
 
@@ -184,9 +184,8 @@ class Port:
             x0 = float(stop) - float(d[stop])/float(d[stop]-d[stop-1])
             i += 1
             v = float(self.expand)*float(x0)
-            #tofs += [np.int64(v)] 
-            tofs += [np.int64(randomround(v,self.rng))] 
-            slopes += [d[stop]-d[stop-1]] ## scaling to reign in the obscene derivatives... probably should be scaling d here instead
+            tofs += [np.uint64(randomround(v,self.rng))] 
+            slopes += [d[stop]-d[stop-1]] 
         return tofs,slopes,np.uint32(len(tofs))
 
     def scanedges(self,d):
@@ -280,36 +279,19 @@ class Port:
                 b = np.mean(s[adc:self.baselim+adc:self.nadcs])
                 s[adc::self.nadcs] = (s[adc::self.nadcs] ) - np.int32(b)
             logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
-            #logic = cfdLogic(s,invfrac=4,offset=10) #produce the "logic vector"
             e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
             self.addsample(s,logic)
 
         if self.initState:
             self.sz = s.shape[0]*self.inflate*self.expand
-            #self.tofs = [0]
-            #self.slopes = [0]
             self.addresses = [np.uint64(0)]
             self.nedges = [np.uint64(ne)]
-            #if ne<1:
-            #    self.addresses = [np.uint64(0)]
-            #    self.nedges = [np.uint64(0)]
-            #    self.tofs += []
-            #    self.slopes += []
-            #else:
             if ne>0:
                 self.tofs += e
                 self.slopes += de
         else:
             self.addresses += [np.uint64(len(self.tofs))]
             self.nedges += [np.uint64(ne)]
-            #if ne<1:
-            #    self.addresses += [np.uint64(0)]
-            #    self.nedges += [np.uint64(0)]
-            #    self.tofs += []
-            #    self.slopes += []
-            #else:
-            #    self.addresses += [np.uint64(len(self.tofs))]
-            #    self.nedges += [np.uint64(ne)]
             if ne>0:
                 self.tofs += e
                 self.slopes += de
