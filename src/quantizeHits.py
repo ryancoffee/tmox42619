@@ -31,17 +31,24 @@ def main():
                 n = np.sum(f[k]['nedges'][()][nsum*i:nsum*(i+1)])
                 data[k] += [quants[k].histogram(f[k]['tofs'][()][a:a+n])]
 
+    with h5py.File('%s.qunatizers.h5'%(fname),'w') as q:
+        Quantizer.saveH5(quants,q)
+
     if plotting:
         image=np.zeros((len(data[portkeys[0]][0]),len(data.keys())),dtype=np.uint16)
         print(image.shape)
+        XX,YY = np.meshgrid(np.arange(image.shape[1]),np.arange(image.shape[0]))
+        print(XX.shape)
+        print(YY.shape)
         _= [print(len(data[k][0])) for k in data.keys()]
         for i in range(len(data[portkeys[0]])):
             for j,k in enumerate(data.keys()):
                 image[:,j] = data[k][i]
-            imname = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_multicolorhack/ascii/sum2000_img_%i.dat'%i
-            np.savetxt(imname,image,fmt='%i')
+            #imname = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_multicolorhack/ascii/sum2000_img_%i.dat'%i
+            #np.savetxt(imname,image,fmt='%i')
             #plt.imshow(image)
-            #plt.show()
+            plt.pcolor(XX,YY,image)
+            plt.show()
             #print('saving %s'%imname)
         #for k in list(data.keys())[:1]:
             #plt.plot(data[k],'.')
