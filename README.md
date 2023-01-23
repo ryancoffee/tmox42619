@@ -25,8 +25,14 @@ I have hardcoded a vls pitch correction in quantizeVls.py.
 
 # Raw waveforms
 Mostly this is to get everyone to see we are using very little of the uint16 bit-depth for our waveforms in abaco high sample rate digitizers (hsd).
-![Contatenated raw waveforms](./figs/samplerawvalues316.png)
+![Concatenated raw waveforms](./figs/samplerawvalues316.png)
 ![plot](./figs/samplerawvalues.png)
+
+## Updated for Christos.
+src/waves2h5.py calls processChristos() which adds every raw waveform along with the adc baseline corrected, and the corresponding logic vector.  
+This is done by including the Port.addeverysample() method to processChristos().  
+![Example Shot](./figs/ForChristos.png)
+This example is from file ```/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_Christos/h5files/waves.tmox42619.run_084.h5```
 
 # Hacking multicolor
 ## Nitrogen (maybe N-=edge of N2O)

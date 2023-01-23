@@ -115,6 +115,7 @@ class Port:
         self.slopes = []
         self.addresses = []
         self.nedges = []
+        self.raw = {}
         self.waves = {}
         self.logics = {}
         self.shot = int(0)
@@ -125,10 +126,12 @@ class Port:
             g = None
             if 'port_%i'%(key) in f.keys():
                 g = f['port_%i'%(key)]
+                rawgrp = g['raw']
                 wvgrp = g['waves']
                 lggrp = g['logics']
             else:
                 g = f.create_group('port_%i'%(key))
+                rawgrp = g.create_group('raw')
                 wvgrp = g.create_group('waves')
                 lggrp = g.create_group('logics')
             g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint64) 
@@ -136,6 +139,7 @@ class Port:
             g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
             g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint64)
             for k in port[key].waves.keys():
+                rawgrp.create_dataset(k,data=port[key].raw[k].astype(np.uint16),dtype=np.uint16)
                 wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
                 lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int16),dtype=np.int16)
             g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
@@ -146,6 +150,13 @@ class Port:
             g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
             g.create_dataset('events',data=hsdEvents)
         return 
+
+    def addeverysample(self,o,w,l):
+        eventnum = len(self.addresses)
+        self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
+        self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
+        self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
+        return self
 
     def addsample(self,w,l):
         eventnum = len(self.addresses)
@@ -266,11 +277,45 @@ class Port:
                 self.slopes += de
         return True
 
+    def processChristos(self,s):
+        e:List[np.int32] = []
+        de = []
+        ne = 0
+        if type(s) == type(None):
+            self.addeverysample(np.zeros((2,),np.uint16),np.zeros((2,),np.int16),np.zeros((2,),np.float16))
+            e:List[np.int32] = []
+            de = []
+            ne = 0
+        else:
+            s_orig = np.copy(s)
+            for adc in range(self.nadcs):
+                b = np.mean(s[adc:self.baselim+adc:self.nadcs])
+                s[adc::self.nadcs] = (s[adc::self.nadcs] ) - np.int32(b)
+            logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
+            e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
+            self.addeverysample(s_orig,s,logic)
+
+        if self.initState:
+            self.sz = s.shape[0]*self.inflate*self.expand
+            self.addresses = [np.uint64(0)]
+            self.nedges = [np.uint64(ne)]
+            if ne>0:
+                self.tofs += e
+                self.slopes += de
+        else:
+            self.addresses += [np.uint64(len(self.tofs))]
+            self.nedges += [np.uint64(ne)]
+            if ne>0:
+                self.tofs += e
+                self.slopes += de
+        return True
+
     def process(self,s):
         e:List[np.int32] = []
         de = []
         ne = 0
         if type(s) == type(None):
+            self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
             e:List[np.int32] = []
             de = []
             ne = 0
