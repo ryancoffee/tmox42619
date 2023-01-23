@@ -1,0 +1,17 @@
+res = np.array([csum[i,:]/csum[i,-1] for i in range(csum.shape[0])])
+csum = np.cumsum(vlsdata,axis=1)
+cen80 = np.zeros(res.shape)
+inds = np.where((res>.1)*(res<.9))
+cen80[inds] = res[inds]
+
+res = np.array([csum[i,:]/csum[i,-1] for i in range(csum.shape[0])])
+low = np.zeros(res.shape)
+
+inds=np.where((res>0.1)*(res<0.9))
+centroids[inds] = vlsdata[inds]
+newcenters=np.array([np.sum(centroids[i,:]*np.arange(centroids.shape[1]))/np.sum(centroids[i,:]) for i in range(centroids.shape[0])])
+h = np.histogram2d(newcenters,l3,(100,100))[0]
+plt.imshow(h,origin='lower')
+plt.show()
+
+Use the csum over valid inds to choose distribution of 'vls bins' to drop port tofs into for a 2D histogram

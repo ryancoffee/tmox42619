@@ -1,0 +1,7 @@
+sbatch -p psanaq --nodes 1 --ntasks-per-node 1 --wrap="./src/hits2h5.py tmox42619 10 100"
+sbatch -q psanaq --nodes=1 --ntasks-per-node=1 --mem-per-cpu=8GB --gpus-per-node=0 --wrap "/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py tmox42619 7 10000"
+sbatch -p psanaq --nodes=1 --ntasks-per-node=1 --mem-per-cpu=8GB --gpus-per-node=0 --wrap "/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py tmox42619 60 10000"
+sbatch -p psanaq --nodes=1 --ntasks-per-node=1 --mem-per-cpu=8GB --gpus-per-node=0 --wrap "/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py tmox42619 61 10000"
+sbatch -p psanaq --nodes=1 --ntasks-per-node=1 --mem-per-cpu=8GB --gpus-per-node=0 --wrap "/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py tmox42619 10 10000"
+sbatch -p psanaq --nodes=1 --ntasks-per-node=1 --mem-per-cpu=8GB --gpus-per-node=0 --wrap "/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py tmox42619 9 10000"
+for id in 7 8 9 10 11 12 13 14; do sbatch -p psanaq --nodes 1 --ntasks-per-node 1 --mem-per-cpu=8GB --gpus-per-node=0 --wrap="/cds/home/c/coffee/analysis_2022/x42619/src/hits2h5.py tmox42619 $id 10000"; done
