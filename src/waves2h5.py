@@ -90,7 +90,7 @@ def main():
                 goodevents = 0
                 for key in chans.keys(): # here key means 'port number'
                     #try:
-                    s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+                    s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.uint16) 
                     if port[r][key].processChristos(s):
                         goodevents += 1
                     else:
