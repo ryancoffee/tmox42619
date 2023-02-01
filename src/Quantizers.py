@@ -31,12 +31,17 @@ class Quantizer:
         return self.qbins
     def binwidths(self):
         return self.qbins[1:]-self.qbins[:-1]
-    def saveH5(self,fname):
+
+    @classmethod
+    def saveH5(cls,fname,klist,qdict):
         with h5py.File(fname,'w') as f:
-            ds = f.create_dataset('qbins',data=self.qbins,dtype=float)
-            ds.attrs.create('nbins',self.nbins,dtype=np.uint32)
-            ds.attrs.create('style',self.style,dtype=str)
-        return self
+            for k in klist:
+                grp = f.create_group(k)
+                ds = grp.create_dataset('qbins',data=qdict[k].qbins,dtype=float)
+                ds.attrs.create('nbins',qdict[k].nbins,dtype=np.uint32)
+                ds.attrs.create('style',qdict[k].style)
+        return 
+
     def copybins(self,bins):
         self.qbins = bins
         return self

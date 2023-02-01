@@ -13,7 +13,7 @@ class Gmd:
             grpgmd = f['gmd']
         else:
             grpgmd = f.create_group('gmd')
-        grpgmd.create_dataset('gmdenergy',data=gmd.en,dtype=np.float16)
+        grpgmd.create_dataset('gmdenergy',data=gmd.en,dtype=np.uint16)
         grpgmd.create_dataset('events',data=gmdEvents)
         return
 
@@ -25,14 +25,15 @@ class Gmd:
             self.en += [[np.uint16(e*1000) for e in enlist] + [np.uint16(0) for i in range(max_len-len(enlist))]]
         return self
 
-    def process(self,enin):
-        if enin<0:
+    def process(self,e):
+        if e<0:
             return False
         if self.initState:
-            self.en = [np.uint16(enin*1000)]
+            self.en = [np.uint16(e*1000)]
         else:
-            self.en += [np.uint16(enin*1000)]
+            self.en += [np.uint16(e*1000)]
         return True
+
     def set_initState(self,state):
         self.initState = state
         return self

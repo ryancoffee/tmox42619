@@ -19,6 +19,7 @@ def main():
     fname = sys.argv[2]
     data = {} 
     quants = {}
+    portkeys = []
     with h5py.File(fname,'r') as f:
         portkeys = [k for k in f.keys() if (re.search('port',k) and not re.search('_16',k) and not re.search('_2',k))]
         for k in portkeys:
@@ -31,8 +32,11 @@ def main():
                 n = np.sum(f[k]['nedges'][()][nsum*i:nsum*(i+1)])
                 data[k] += [quants[k].histogram(f[k]['tofs'][()][a:a+n])]
 
-    with h5py.File('%s.qunatizers.h5'%(fname),'w') as q:
-        Quantizer.saveH5(quants,q)
+    m = re.search('(.*)\.h5',fname)
+    if m:
+        qfname = '%s.quantizers.h5'%m.group(1)
+        print(qfname)
+        Quantizer.saveH5(qfname,portkeys,quants)
 
     if plotting:
         image=np.zeros((len(data[portkeys[0]][0]),len(data.keys())),dtype=np.uint16)

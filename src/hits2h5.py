@@ -11,6 +11,7 @@ from scipy.fftpack import dct,dst
 from Ports import *
 from Ebeam import *
 from Vls import *
+from Gmd import *
 from utils import *
 
 
@@ -89,6 +90,7 @@ def main():
     _ = [s.setwin(params['vlswin'][0],params['vlswin'][1]) for s in spect]
     #_ = [s.setthresh(params['vlsthresh']) for s in spect]
     ebunch = [Ebeam() for r in runnums]
+    gmd = [Gmd() for r in runnums]
     _ = [e.setoffset(params['l3offset']) for e in ebunch]
     port = [{} for r in runnums] 
     inflate = params['inflate']
@@ -108,12 +110,12 @@ def main():
     runvls=True
     runebeam=True
     runxtcav=False
-    rungmd=False
+    rungmd=True
     hsds = []
     vlss = []
     ebeams = []
     xtcavs = []
-    gmds = []
+    xgmds = []
     for r in range(len(runnums)):
         eventnum = 0
         print('processing run %i'%runnums[r])
@@ -125,8 +127,8 @@ def main():
             ebeams += [runs[r].Detector('ebeam')]
         if runxtcav and 'xtcav' in runs[r].detnames:
             xtcavs += [runs[r].Detector('xtcav')]
-        if rungmd and 'gmd' in runs[r].detnames:
-            gmds += [runs[r].Detector('gmd')]
+        if rungmd and 'xgmd' in runs[r].detnames:
+            xgmds += [runs[r].Detector('xgmd')]
 
         wv = {}
         wv_logic = {}
@@ -142,6 +144,7 @@ def main():
         vlsEvents = []
         hsdEvents = []
         ebeamEvents = []
+        gmdEvents =[]
 
         init = True 
         vsize = 0
@@ -152,8 +155,6 @@ def main():
                 break
 
             if runxtcav:
-                ## HERE HERE HERE HERE ##
-                ## change this to xtcav.process() style... build xtcav object like the others
                 try:
                     if type(xtcav.raw.value(evt)) == None:
                         print(eventnum,'skip per problem with XTCAV')
@@ -170,7 +171,20 @@ def main():
                     print(eventnum,'skipping xtcav, skip per failed try:')
                     continue
 
+            if rungmd:
+                if type(xgmds[r]) == None:
+                    print(eventnum,'gmd is None')
+                    continue
 
+                thisgmde = xgmds[r].raw.energy(evt)
+                if type(thisgmde) == type(None):
+                    print(eventnum,'thisgmd energy is None')
+                    continue
+
+                if gmd[r].process( thisgmde):
+                    gmdEvents += [eventnum]
+                else:
+                    print(eventnum,'skipping for gmd')
 
             if runvls:
                 ''' VLS specific section, do this first to slice only good shots '''
@@ -213,12 +227,7 @@ def main():
                         continue
                 hsdEvents += [eventnum]
 
-                if init:
-                    init = False
-                    ebunch[r].set_initState(False)
-                    spect[r].set_initState(False)
-                    for key in chans.keys():
-                        port[r][key].set_initState(False)
+
 
 
                 if eventnum<2:
@@ -233,6 +242,14 @@ def main():
                     if eventnum%1000==0: 
                         print('working event %i,\tnedges = %s'%(eventnum,[port[r][k].getnedges() for k in chans.keys()] ))
 
+
+            if init:
+                init = False
+                ebunch[r].set_initState(False)
+                spect[r].set_initState(False)
+                gmd[r].set_initState(False)
+                for key in chans.keys():
+                    port[r][key].set_initState(False)
 
             if eventnum > 1 and eventnum <1000 and eventnum%100==0:
                 with h5py.File(outnames[r],'w') as f:

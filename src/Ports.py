@@ -158,22 +158,26 @@ class Port:
         self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         return self
 
-    def addsample(self,w,l):
+    def addsample(self,o,w,l):
         eventnum = len(self.addresses)
         if eventnum<100:
             if eventnum%10<10: 
+                self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         elif eventnum<1000:
             if eventnum%100<10: 
+                self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         elif eventnum<10000:
             if eventnum%1000<10: 
+                self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         else:
             if eventnum%10000<10: 
+                self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         return self
@@ -314,18 +318,20 @@ class Port:
         e:List[np.int32] = []
         de = []
         ne = 0
+        r = []
         if type(s) == type(None):
-            self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
+            #self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
             e:List[np.int32] = []
             de = []
             ne = 0
         else:
+            if len(self.addresses)%100==0:
+                r = np.copy(s)
             for adc in range(self.nadcs):
                 b = np.mean(s[adc:self.baselim+adc:self.nadcs])
                 s[adc::self.nadcs] = (s[adc::self.nadcs] ) - np.int32(b)
             logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
             e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
-            self.addsample(s,logic)
 
         if self.initState:
             self.sz = s.shape[0]*self.inflate*self.expand
@@ -340,6 +346,8 @@ class Port:
             if ne>0:
                 self.tofs += e
                 self.slopes += de
+        if len(self.addresses)%100==0:
+            self.addsample(r,s,logic)
         return True
 
     def set_initState(self,state=True):
