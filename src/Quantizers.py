@@ -23,6 +23,14 @@ class Quantizer:
             self.qbins = np.arange(np.min(data),np.max(data)+1)
         return self
 
+    def getbin(self,e):
+        b = 0
+        while (self.qbins[b]<e and b<self.nbins-1):
+            b += 1
+        return b
+
+    def getnbins(self):
+        return self.nbins
     def histogram(self,data):
         return np.histogram(data,bins=self.qbins)[0]
     def bincenters(self):

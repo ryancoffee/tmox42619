@@ -154,6 +154,8 @@ def main():
             if eventnum > nshots:
                 break
 
+            completeEvent = []
+
             if runxtcav:
                 try:
                     if type(xtcav.raw.value(evt)) == None:
@@ -166,9 +168,37 @@ def main():
                     xtcavImages += [imgcrop]
                     xtcavX0s += [x0]
                     xtcavY0s += [y0]
-                    xtcavEvents += [eventnum]
+                    completeEvent += [True]
                 except:
                     print(eventnum,'skipping xtcav, skip per failed try:')
+                    completeEvent += [False]
+                    continue
+
+
+            if runvls:
+                ''' VLS specific section, do this first to slice only good shots '''
+                if type(vlss[r]) == None:
+                    print(eventnum,'skip per problem with VLS')
+                    continue
+                vlswv = np.squeeze(vlss[r].raw.value(evt))
+                if spect[r].process(vlswv):
+                    completeEvent += [True]
+                else:
+                    #print(eventnum,'skip per low vls')
+                    completeEvent += [False]
+                    continue
+
+            if runebeam:
+                ''' Ebeam specific section '''
+                if type(ebeams[r]) == None:
+                    print(eventnum,'ebeam is None')
+                    continue
+                thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
+                if ebunch[r].process(thisl3):
+                    completeEvent += [True]
+                else:
+                    print(eventnum,'skipping for l3')
+                    completeEvent += [False]
                     continue
 
             if rungmd:
@@ -182,33 +212,12 @@ def main():
                     continue
 
                 if gmd[r].process( thisgmde):
-                    gmdEvents += [eventnum]
+                    completeEvent += [True]
                 else:
                     print(eventnum,'skipping for gmd')
-
-            if runvls:
-                ''' VLS specific section, do this first to slice only good shots '''
-                if type(vlss[r]) == None:
-                    print(eventnum,'skip per problem with VLS')
-                    continue
-                vlswv = np.squeeze(vlss[r].raw.value(evt))
-                if spect[r].process(vlswv):
-                    vlsEvents += [eventnum]
-                else:
-                    #print(eventnum,'skip per low vls')
+                    completeEvent += [False]
                     continue
 
-            if runebeam:
-                ''' Ebeam specific section '''
-                if type(ebeams[r]) == None:
-                    print(eventnum,'ebeam is None')
-                    continue
-                thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
-                if ebunch[r].process(thisl3):
-                    ebeamEvents += [eventnum]
-                else:
-                    print(eventnum,'skipping for l3')
-                    continue
 
             if runhsd:
     
@@ -219,14 +228,26 @@ def main():
                         s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
                         if port[r][key].process(s):
                             goodevents += 1
+                            completeEvent += [True]
                         else:
                             print(eventnum, 'hsd process == False for %s'%key)
+                            completeEvent += [False]
                             continue
                     except:
                         print(eventnum, 'failed hsd for some reason')
                         continue
-                hsdEvents += [eventnum]
 
+            if bool(np.prod(completeEvent)):
+                if runebeam:
+                    ebeamEvents += [eventnum]
+                if runvls:
+                    vlsEvents += [eventnum]
+                if runxtcav:
+                    xtcavEvents += [eventnum]
+                if rungmd:
+                    gmdEvents += [eventnum]
+                if runhsd:
+                    hsdEvents += [eventnum]
 
 
 
@@ -261,6 +282,7 @@ def main():
                     if runebeam:
                         Ebeam.update_h5(f,ebunch[r],ebeamEvents)
                     if rungmd:
+                        print(gmdEvents)
                         Gmd.update_h5(f,gmd[r],gmdEvents)
 
             elif eventnum>900 and eventnum%1000==0:
