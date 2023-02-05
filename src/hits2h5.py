@@ -282,7 +282,6 @@ def main():
                     if runebeam:
                         Ebeam.update_h5(f,ebunch[r],ebeamEvents)
                     if rungmd:
-                        print(gmdEvents)
                         Gmd.update_h5(f,gmd[r],gmdEvents)
 
             elif eventnum>900 and eventnum%1000==0:
