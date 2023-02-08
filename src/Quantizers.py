@@ -20,7 +20,9 @@ class Quantizer:
             yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
             self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
         else:
-            self.qbins = np.arange(np.min(data),np.max(data)+1)
+            mx = np.max(data)+1
+            mn = np.min(data)
+            self.qbins = np.arange(mn,mx,step=np.float(mx - mn)/np.float(self.nbins+1))
         return self
 
     def getbin(self,e):

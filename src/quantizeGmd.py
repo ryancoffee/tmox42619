@@ -11,7 +11,7 @@ def main():
         print('syntax: quantizeGmd.py <ntofbins> <ngmdbins> <fnames>')
         return
 
-    donorm = False
+    donorm = True
     fnames = sys.argv[3:]
     ntofbins = np.uint32(sys.argv[1])
     ngmdbins = np.uint32(sys.argv[2])
@@ -26,8 +26,8 @@ def main():
     for fname in fnames:
         m = re.search('run_(\d+)',fname)
         with h5py.File(fname,'r') as f:
-            portkeys = [k for k in f.keys() if (re.search('port',k) and not re.search('_16',k) and not re.search('_2',k))] # keeping the bare MCP ports 2 and 16 here
-            #portkeys = [k for k in f.keys() if re.search('port',k)] # and not re.search('_16',k) and not re.search('_2',k))] # keeping the bare MCP ports 2 and 16 here
+            portkeys = [k for k in f.keys() if (re.search('port',k))]# and not re.search('_16',k) and not re.search('_2',k))] # keeping the bare MCP ports 2 and 16 here
+            #portkeys = [k for k in f.keys() if (re.search('port',k) and not re.search('_16',k) and not re.search('_2',k))] # keeping the bare MCP ports 2 and 16 here
             if len(quants.keys())==0:
                 for k in portkeys:
                     quants[k] = Quantizer(style='nonuniform',nbins=ntofbins)
@@ -61,55 +61,50 @@ def main():
 
     gmdnorm = np.zeros(gmdquant.getnbins())
     for shot,gmden in enumerate(gmdens):
+        gmdnorm[gmdquant.getbin(gmden)] += gmden
         for k in portkeys:
-            #try:
             a = addresses[k][shot]
             n = nedges[k][shot]
             hist[k][gmdquant.getbin(gmden),:] += quants[k].histogram(tofs[k][a:a+n]).astype(float)
-                #hist[k][gmdquant.getbin(gmden),:] += quants[k].histogram(tofs[k][a:a+n]).astype(float)/quants[k].binwidths()
-            #except:
-            #    print('%i gmden failed'%gmden)
 
-    crop=2
-    ycrop=1
-    fig1,ax = plt.subplots(2,4,figsize=(18,9))
-    for i,k in enumerate(portkeys):
-        if len(tofs[k])>1:
-            X,Y = np.meshgrid(quants[k].binedges()[1:-crop-1],np.arange(gmdquant.getnbins()+1-ycrop))
-            if donorm:
-                for b in range(gmdquant.getnbins()):
-                    if gmdnorm[b]>0:
-                        hist[k][b,:] /= gmdnorm[b]
-                    else:
-                        hist[k][b,:] *= 0
-            #ax[i//4,i%4].pcolor(X,Y,hist[k][:-ycrop,1:-crop])#,origin='lower')
-            ax[i//4,i%4].pcolor(X,Y,np.log2(hist[k][:-ycrop,1:-crop]))#,origin='lower')
-            ax[i//4,i%4].set_title('%s'%k)
-            ax[i//4,i%4].set_xlabel('tofs')
-            ax[i//4,i%4].set_ylabel('vls')
-    plt.savefig('Figure_1_tofs_oneto%i.png'%crop)
-    plt.show()
+    nrows = 2
+    ncols = len(portkeys)//nrows
+    fig1,ax = plt.subplots(nrows,ncols,figsize=(18,9))
+
+    with h5py.File('%s.counts.qtofs.qgmd.h5'%fnames[0],'w') as o:
+        ggrp = o.create_group('gmd')
+        ggrp.create_dataset('bins',data=gmdquant.binedges())
+        ggrp.create_dataset('norm',data=gmdnorm)
+        for i,k in enumerate(portkeys):
+            kgrp = o.create_group(k)
+            if len(tofs[k])>1:
+                kgrp.create_dataset('quantbins',data=quants[k].binedges())
+                #X,Y = np.meshgrid(quants[k].binedges(),gmdquant.binedges())
+                X,Y = np.meshgrid(np.arange(len(quants[k].binedges())-1),gmdquant.binedges()[:-1])
+                if donorm:
+                    res = np.zeros(hist[k].shape,dtype=float)
+                    for b in range(gmdquant.getnbins()):
+                        if gmdnorm[b]>0:
+                            res[b,:] = hist[k][b,:].astype(float) / float(gmdnorm[b])
+                            res[b,:] /= quants[k].binwidths()
+                            #res[b,:] /= gmdquant.binwidths()[b]
+                    ax[i//ncols,i%(ncols)].pcolor(X[1:,:],Y[1:,:],res[1:,:])#,origin='lower')
+                    #ax[i//ncols,i%ncols].pcolor(X[1:,len(quants[k].binedges())//2:],Y[1:,len(quants[k].binedges())//2:],res[1:,len(quants[k].binedges())//2:])#,origin='lower')
+                    #ax[i//ncols,i%ncols].pcolor(X[1:,:len(quants[k].binedges())//2],Y[1:,:len(quants[k].binedges())//2],res[1:,:len(quants[k].binedges())//2])#,origin='lower')
+                    ax[i//ncols,i%ncols].set_title('%s'%k)
+                    ax[i//ncols,i%ncols].set_xlabel('quantized tofs')
+                    ax[i//ncols,i%ncols].set_ylabel('gmd [uJ]')
+                else:
+                    ax[i//ncols,i%ncols].pcolor(X,Y,hist[k][1:,:])#,origin='lower')
+                    #ax[i//ncols,i%ncols].pcolor(X,Y,np.log2(hist[k]))#,origin='lower')
+                    ax[i//ncols,i%ncols].set_title('%s'%k)
+                    ax[i//ncols,i%ncols].set_xlabel('quantized tofs')
+                    ax[i//ncols,i%ncols].set_ylabel('gmd [uJ]')
+                kgrp.create_dataset('hist',data=hist[k])
+        plt.savefig('Figure_all_qtofs_gmd.png')
+        plt.show()
     return
 
-    '''
-    fig2,ax = plt.subplots(2,4,figsize=(18,9))
-    for i,k in enumerate(portkeys):
-        if len(tofs[k])>1:
-            X,Y = np.meshgrid(np.arange(len(quants[k].binedges())-crop-1),np.arange(nvlsbins+1-ycrop))
-            if donorm:
-                for v in range(nvlsbins):
-                    if vlsnorm[v]>0:
-                        hist[k][v,:] /= vlsnorm[v]
-                    else:
-                        hist[k][v,:] *= 0
-            ax[i//4,i%4].pcolor(X,Y,np.log2(hist[k][:-ycrop,1:-crop]))#,origin='lower')
-            ax[i//4,i%4].set_title('%s'%k)
-            ax[i//4,i%4].set_xlabel('qbins')
-            ax[i//4,i%4].set_ylabel('vls')
-    plt.savefig('Figure_1_qbins_oneto%i.png'%crop)
-    plt.show()
-        #outname = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/ascii/test_%s_hist.dat'%(k)
-    '''
 
 
     '''
