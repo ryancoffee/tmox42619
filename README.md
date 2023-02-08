@@ -1,5 +1,8 @@
 # Nonuniform Quantization
 "Knowledge-based quantization (cumsum) reather than a training-based quantization (Berthie)" Audrey Corbeil Therrien
+Using this src/quantizeGmd.py and figs/plotting.counts.py to make figures related to count rates. 
+So far, the runs e.g. 188 and 189 are grouped into the quantized histogramed .h5 files together with 188... later, do Neon and there only using one run for each set of figures. 
+The count rate looks to be about 1-3 per feature spectral feature. 
 
 #Vernier scanning res-Auger N2O
 ports 0, 1, 12, 14, 15 look pretty good to do in order for plotting with title '0,pi/8,pi/4,3pi/8,pi/2', maybe try using a vector plot in latex.  
