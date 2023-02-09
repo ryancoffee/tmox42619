@@ -16,24 +16,32 @@ def main(path,fname,runstring):
     
     run188lims = {}
     run188lims['O photo'] ={
-        'port_12':(80,100,.25),
-        'port_14':(70,90,.25),
-        'port_0':(75,95,.25)
+        'port_12':(160,200,.25),
+        'port_5':(155,190,.25),
+        'port_14':(140,180,.25),
+        'port_15':(125,200,.25),
+        'port_0':(135,190,.25)
         }
     run188lims['N photo'] = {
-        'port_12':(30,50,1),
-        'port_14':(32,50,1),
-        'port_0':(50,75,1)
+        'port_12':(59,100,1),
+        'port_5':(59,95,1),
+        'port_14':(63,90,1),
+        'port_15':(97,115,1),
+        'port_0':(94,135,1)
         }
     run188lims['N Auger'] = {
-        'port_12':(12,30,1),
-        'port_14':(15,32,1),
-        'port_0':(20,50,1)
+        'port_12':(20,55,.5),
+        'port_5':(20,55,.5),
+        'port_14':(28,60,.5),
+        'port_15':(35,90,.5),
+        'port_0':(37,92,.5)
     }
     run188lims['O Auger'] = {
-        'port_12':(2,12,1),
-        'port_14':(2,15,1),
-        'port_0':(2,20,1)
+        'port_12':(2,24,1),
+        'port_5':(2,24,1),
+        'port_14':(2,30,1),
+        'port_15':(3,35,1),
+        'port_0':(3,35,1)
     }
     with h5py.File('%s/%s'%(path,fname),'r') as f:
         portkeys = [k for k in f.keys() if (re.search('port',k) and not re.search('_16',k) and not re.search('_2',k))] # keeping the bare MCP ports 2 and 16 here
@@ -50,8 +58,8 @@ def main(path,fname,runstring):
                 plt.legend(['%i uJ'%int(0.5*(f['gmd']['bins'][()][i]+f['gmd']['bins'][()][i+1])+0.5) for i in gmdinds],bbox_to_anchor=(1.05,1),loc='upper left')
                 plt.tight_layout()
                 plt.savefig('/cds/home/c/coffee/Downloads/%s_cumcounts_%s.png'%(runstring,k))
-                #plt.show()
-        for k in ['port_12','port_14','port_0']:
+                plt.show()
+        for k in ['port_12','port_5','port_14','port_15','port_0']:
             XX,YY = np.meshgrid(f[k]['quantbins'][()][:-1]/8./6.,0.5*(f['gmd']['bins'][()][:-1]+f['gmd']['bins'][()][1:]))
             tofwidths = (f[k]['quantbins'][()][1:]-f[k]['quantbins'][()][:-1])/8./6.
             spect = np.ones(f[k]['hist'].shape,dtype=float)
