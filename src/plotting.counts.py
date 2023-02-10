@@ -57,8 +57,8 @@ def main(path,fname,runstring):
         'port_13':((,),(,),(,),(,),(,))
         'port_4':((,),(,),(,),(,),(,))
     }
-    run197calibtofs={# below threshold
-        'port_12':((,),(,),(,),(,),(,))
+    run197calibtofs={# below threshold 550 so actual 540eV below threshold
+        'port_12':((,--),(,131.4),(,127.4),(,372),(,503))
         'port_5':((,),(,),(,),(,),(,))
         'port_14':((,),(,),(,),(,),(,))
         'port_15':((,),(,),(,),(,),(,))
