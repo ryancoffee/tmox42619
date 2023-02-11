@@ -88,7 +88,8 @@ def main():
                             res[b,:] = hist[k][b,:].astype(float) / float(gmdnorm[b])
                             res[b,:] /= quants[k].binwidths()
                             #res[b,:] /= gmdquant.binwidths()[b]
-                    ax[i//ncols,i%(ncols)].pcolor(X[1:,:],Y[1:,:],np.log2(res[1:,:]))#,origin='lower')
+                    ax[i//ncols,i%(ncols)].pcolor(X[1:,:],Y[1:,:],res[1:,:])#,origin='lower')
+                    #ax[i//ncols,i%(ncols)].pcolor(X[1:,:],Y[1:,:],np.log2(res[1:,:]))#,origin='lower')
                     #ax[i//ncols,i%ncols].pcolor(X[1:,len(quants[k].binedges())//2:],Y[1:,len(quants[k].binedges())//2:],res[1:,len(quants[k].binedges())//2:])#,origin='lower')
                     #ax[i//ncols,i%ncols].pcolor(X[1:,:len(quants[k].binedges())//2],Y[1:,:len(quants[k].binedges())//2],res[1:,:len(quants[k].binedges())//2])#,origin='lower')
                     ax[i//ncols,i%ncols].set_title('%s'%k)

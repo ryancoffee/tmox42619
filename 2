@@ -1,7 +1,6 @@
 #!/cds/sw/ds/ana/conda2/inst/envs/ps-4.5.7-py39/bin/python3
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid.inset_locator import inset_axes, InsetPosition, mark_inset
 import h5py
 import numpy as np
 import sys
@@ -13,20 +12,18 @@ def main(path,fname,runstring):
     print('%s/%s'%(path,fname))
     #path = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier_1000vlsthresh/h5files/'
     #fname = 'hits.tmox42619.run_188.h5.counts.qtofs.qgmd.h5'
-    documsum = True
-    makeplots = False
+    gmdinds = [i for i in range(1,32,5)]
+    documsum = False
+    makeplots = True
     dofitting = False
     
     run088lims = {}
     run088lims['Ne full'] ={
-        'port_12':(2,222,1,20),
-        'port_4':(2,222,1,20),
-        'port_13':(2,222,1,20),
-        'port_5':(2,222,1,20),
-        'port_14':(2,222,1,20),
-        'port_15':(2,222,1,20),
-        'port_1':(2,222,1,20),
-        'port_0':(2,222,1,20),
+        'port_12':(2,222,1,20)
+        'port_5':(2,222,1,20)
+        'port_14':(2,222,1,20)
+        'port_15':(2,222,1,20)
+        'port_0':(2,222,1,20)
     }
 
 
@@ -132,32 +129,16 @@ def main(path,fname,runstring):
         gmdscale = 0.5*(f['gmd']['bins'][()][:-1]+f['gmd']['bins'][()][1:])/f['gmd']['norm'][()]
         if documsum:
             for k in portkeys:
-                gmdinds = [i for i in range(1,f[k]['hist'].shape[0],2)]
-                fig = plt.figure(figsize=(6,5))
-                ax1 = fig.add_subplot(111)
-                _= [ax1.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,np.cumsum(f[k]['hist'][()][i,:])*gmdscale[i]) for i in gmdinds]
-                #_= [ax1.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,(np.cumsum(f[k]['hist'][()][i,:])-np.sum(f[k]['hist'][()][i,:3]))*gmdscale[i]) for i in gmdinds]
-                ax1.set_xlabel('ToF [ns]')
-                ax1.set_ylabel('mean cumulative counts/shot')
-                ax1.set_ylim((0,25))# runs 082-09x
-                ax1.set_xlim((0,400))# runs 082-09x
-                #ax1.set_xlim((0,200))# nno runs 188-200
-                #ax1.set_ylim((0,15))# nno runs 188-200
-                #ax1.set_title('%s %s'%(runstring,k))
-                ax1.grid()
-                ax1.legend(['%i uJ'%int(0.5*(f['gmd']['bins'][()][i]+f['gmd']['bins'][()][i+1])+0.5) for i in gmdinds],bbox_to_anchor=(1.05,1),loc='upper left')
-                ax2 = plt.axes([0,0,1,1])
-                ip = InsetPosition(ax1,[.75,-.05,.5,.4])
-                ax2.set_axes_locator(ip)
-                mark_inset(ax1, ax2, loc1=2, loc2=4, fc="none", ec='0.5')
-                ax2.set_ylim((0,2))# runs 082-09x
-                ax2.set_xlim((22,24))# runs 082-09x
-                #ax2.set_xlim((25,40))# nno runs 188-200
-                #ax2.set_ylim((0,4))# nno runs 188-200
-                ax2.grid()
-                _= [ax2.step((f[k]['quantbins'][()][:128]-f[k]['quantbins'][()][0])/8./6.,(np.cumsum(f[k]['hist'][()][i,:128])-np.sum(f[k]['hist'][()][i,:3]))*gmdscale[i]) for i in gmdinds]
+                _= [plt.plot(f[k]['quantbins'][()][:-1]/8./6.,np.cumsum(f[k]['hist'][()][i,:]*gmdscale[i])) for i in gmdinds]
+                plt.xlabel('tof [ns]')
+                plt.ylabel('mean cumulative counts/shot')
+                plt.ylim((0,25))
+                plt.xlim((690,1300))
+                plt.title('%s %s'%(runstring,k))
+                plt.grid()
+                plt.legend(['%i uJ'%int(0.5*(f['gmd']['bins'][()][i]+f['gmd']['bins'][()][i+1])+0.5) for i in gmdinds],bbox_to_anchor=(1.05,1),loc='upper left')
                 plt.tight_layout()
-                plt.savefig('%s/../figs/%s_cumcounts_inset_%s.png'%(path,runstring,k))
+                plt.savefig('/cds/home/c/coffee/Downloads/%s_cumcounts_%s.png'%(runstring,k))
                 plt.show()
         if makeplots:
             limdict = run188lims
