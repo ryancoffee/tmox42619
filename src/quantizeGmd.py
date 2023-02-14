@@ -24,7 +24,6 @@ def main():
     gmdens = []
     portkeys = []
     for fname in fnames:
-        m = re.search('run_(\d+)',fname)
         with h5py.File(fname,'r') as f:
             portkeys = [k for k in f.keys() if (re.search('port',k))]# and not re.search('_16',k) and not re.search('_2',k))] # keeping the bare MCP ports 2 and 16 here
             #portkeys = [k for k in f.keys() if (re.search('port',k) and not re.search('_16',k) and not re.search('_2',k))] # keeping the bare MCP ports 2 and 16 here
