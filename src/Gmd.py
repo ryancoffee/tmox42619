@@ -25,9 +25,14 @@ class Gmd:
             self.en += [[np.uint16(e*1000) for e in enlist] + [np.uint16(0) for i in range(max_len-len(enlist))]]
         return self
 
-    def process(self,e):
+    def test(self,e):
+        if type(e)==type(None):
+            return False
         if e<0:
             return False
+        return True
+
+    def process(self,e):
         if self.initState:
             self.en = [np.uint16(e*1000)]
         else:

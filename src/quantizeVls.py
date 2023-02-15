@@ -62,20 +62,17 @@ def main():
             quants[k].setbins(data=tofs[k])
 
     vlsquant.setbins(data=vlscenters)
-    plt.step(vlsquant.bincenters(),vlsquant.histogram(data=vlscenters))
+    plt.step(vlsquant.bincenters(),vlsquant.histogram(data=vlscenters)/vlsquant.binwidths())
     plt.show()
 
     gmdquant.setbins(data=gmdens)
-    plt.step(gmdquant.bincenters(),gmdquant.histogram(data=gmdens))
+    plt.step(gmdquant.bincenters(),gmdquant.histogram(data=gmdens)/gmdquant.binwidths())
     plt.show()
 
     vlsnorm = np.zeros(vlsquant.getnbins())
     gmdnorm = np.zeros(gmdquant.getnbins())
 
-    print('len(gmdens)\tlen(vlscenters) are\t %i\t%s\trespectively'%(len(gmdens),len(vlscenters)))
-    print('Failing assertion, need to adopt the goodshot counter as implemented in quantizeGmd.py')
     assert len(gmdens)==len(vlscenters)
-    #    return
 
     for shot in range(len(gmdens)):
         gmdnorm[gmdquant.getbin(gmdens[shot])] += gmdens[shot]
@@ -84,6 +81,7 @@ def main():
             a = addresses[k][shot]
             n = nedges[k][shot]
             hist[k][vlsquant.getbin(vlscenters[shot]),gmdquant.getbin(gmdens[shot]),:] += quants[k].histogram(tofs[k][a:a+n]).astype(float)
+   
     return
 
     '''

@@ -65,8 +65,10 @@ class Vls:
         self.winstop = int(high)
         return self
 
-    def process(self, vlswv):
+    def test(self,vlswv):
         mean = np.int16(0)
+        if type(vlswv)==type(None):
+            return False
         try:
             mean = np.int16(np.mean(vlswv[1800:])) # this subtracts baseline
         except:
@@ -74,19 +76,26 @@ class Vls:
             return False
         else:
             if (np.max(vlswv)-mean)<self.vlsthresh:
+                #print('weak Vls!')
                 return False
-            d = np.copy(vlswv-mean).astype(np.int16)
-            c,s = getcentroid(d[self.winstart:self.winstop],pct=0.8)
-            if self.initState:
-                self.v = [d]
-                self.vsize = len(self.v)
-                self.vc = [np.float16(c)]
-                self.vs = [np.uint64(s)]
-                self.initState = False
-            else:
-                self.v += [d]
-                self.vc += [np.float16(c)]
-                self.vs += [np.uint64(s)]
+        return True
+
+    def process(self, vlswv):
+        mean = np.int16(np.mean(vlswv[1800:])) # this subtracts baseline
+        if (np.max(vlswv)-mean)<self.vlsthresh:
+            return False
+        d = np.copy(vlswv-mean).astype(np.int16)
+        c,s = getcentroid(d[self.winstart:self.winstop],pct=0.8)
+        if self.initState:
+            self.v = [d]
+            self.vsize = len(self.v)
+            self.vc = [np.float16(c)]
+            self.vs = [np.uint64(s)]
+            self.initState = False
+        else:
+            self.v += [d]
+            self.vc += [np.float16(c)]
+            self.vs += [np.uint64(s)]
         return True
 
     def set_initState(self,state: bool):

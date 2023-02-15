@@ -29,17 +29,22 @@ class Ebeam:
             self.l3 += [[np.float16(l3-self.l3offset) for l3 in l3list] + [0 for i in range(max_len-len(l3list))]]
         return self
 
-    def process(self,l3in):
+    def test(self,l3in):
+        if type(l3in)==type(None):
+            return False
         try:
             d = np.float16(float(l3in)-float(self.l3offset))
         except:
             print('Damnit, Ebeam!')
             return False
+        return True
+
+    def process(self,l3in):
+        d = np.float16(float(l3in)-float(self.l3offset))
+        if self.initState:
+            self.l3 = [d]
         else:
-            if self.initState:
-                self.l3 = [d]
-            else:
-                self.l3 += [d]
+            self.l3 += [d]
         return True
 
     def set_initState(self,state):

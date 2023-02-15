@@ -329,6 +329,7 @@ class Port:
             e:List[np.int32] = []
             de = []
             ne = 0
+            return False
         else:
             if len(self.addresses)%100==0:
                 r = np.copy(s)

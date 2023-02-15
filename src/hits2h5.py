@@ -185,10 +185,8 @@ def main():
                     print(eventnum,'skip per problem with VLS')
                     completeEvent += [False]
                     continue
-                else:
-                    vlswv = np.squeeze(vlss[r].raw.value(evt))
-                    if type(vlswv) == type(None):
-                        completeEvent +=[False]
+                vlswv = np.squeeze(vlss[r].raw.value(evt))
+                completeEvent += [spect[r].test(vlswv)]
 
 
 ## test thisl3
@@ -199,30 +197,28 @@ def main():
                     print(eventnum,'ebeam is None')
                     completeEvent += [False]
                     continue
-                else:
-                    thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
-                    if thisl3 == None:
-                        completeEvent +=[False]
+                thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
+                completeEvent += [ebunch[r].test(thisl3)]
 
 
 ## test thisgmde
             thisgmde = None
-            if rungmd and type(thisgmde) == type(None):
+            if rungmd and bool(np.prod(completeEvent)):
                 if type(xgmds[r]) == None:
                     print(eventnum,'gmd is None')
                     completeEvent += [False]
                     continue
-                else:
-                    thisgmde = xgmds[r].raw.energy(evt)
-                    if thisgmde == None:
-                        completeEvent +=[False]
+                thisgmde = xgmds[r].raw.energy(evt)
+                completeEvent += [gmd[r].test(thisgmde)]
 
 
 ## test hsds
-            if runhsd:
+            if runhsd and bool(np.prod(completeEvent)):
+                if type(hsds[r]) == None:
+                    print(eventnum,'hsds is None')
+                    completeEvent += [False]
                 for key in chans.keys(): # here key means 'port number'
-                    if port[r][key].test(hsds[r].raw.waveforms(evt)[ chans[key] ][0]):
-                        completeEvent += [True]
+                    completeEvent += [port[r][key].test(hsds[r].raw.waveforms(evt)[ chans[key] ][0])]
 
 
 ## process VLS
@@ -238,18 +234,14 @@ def main():
                 gmd[r].process(thisgmde)
 
 
-## process 
+## process hsds
             if runhsd and bool(np.prod(completeEvent)):
                 ''' HSD-Abaco section '''
                 for key in chans.keys(): # here key means 'port number'
                     s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-                    if port[r][key].process(s):
-                        completeEvent += [True]
-                    else:
-                        print(eventnum, 'hsd process == False for %s'%key)
-                        completeEvent += [False]
-                        continue
+                    port[r][key].process(s)
 
+## redundant events vec
             if bool(np.prod(completeEvent)):
                 if runebeam:
                     ebeamEvents += [eventnum]
