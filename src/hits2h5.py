@@ -154,87 +154,100 @@ def main():
             if eventnum > nshots:
                 break
 
-            completeEvent = []
+            completeEvent = [True]
 
-            if runxtcav:
+            if runxtcav and bool(np.prod(completeEvent)):
                 try:
                     if type(xtcav.raw.value(evt)) == None:
                         print(eventnum,'skip per problem with XTCAV')
+                        completeEvent += [False]
                         continue
-                    img = np.copy(xtcav.raw.value(evt)).astype(np.int16)
-                    mf = np.argmax(np.histogram(img,np.arange(2**8))[0])
-                    img -= mf
-                    imgcrop,x0,y0 = xtcav_crop(img,win=(512,256))
-                    xtcavImages += [imgcrop]
-                    xtcavX0s += [x0]
-                    xtcavY0s += [y0]
-                    completeEvent += [True]
+                    else:
+                        img = np.copy(xtcav.raw.value(evt)).astype(np.int16)
+                        mf = np.argmax(np.histogram(img,np.arange(2**8))[0])
+                        img -= mf
+                        imgcrop,x0,y0 = xtcav_crop(img,win=(512,256))
+                        xtcavImages += [imgcrop]
+                        xtcavX0s += [x0]
+                        xtcavY0s += [y0]
+                        completeEvent += [True]
                 except:
                     print(eventnum,'skipping xtcav, skip per failed try:')
                     completeEvent += [False]
                     continue
 
 
-            if runvls:
+## test vlswv
+            vlswv = None
+            if runvls and bool(np.prod(completeEvent)):
                 ''' VLS specific section, do this first to slice only good shots '''
                 if type(vlss[r]) == None:
                     print(eventnum,'skip per problem with VLS')
-                    continue
-                vlswv = np.squeeze(vlss[r].raw.value(evt))
-                if spect[r].process(vlswv):
-                    completeEvent += [True]
-                else:
-                    #print(eventnum,'skip per low vls')
                     completeEvent += [False]
                     continue
+                else:
+                    vlswv = np.squeeze(vlss[r].raw.value(evt))
+                    if type(vlswv) == type(None):
+                        completeEvent +=[False]
 
-            if runebeam:
+
+## test thisl3
+            thisl3 = None
+            if runebeam and bool(np.prod(completeEvent)):
                 ''' Ebeam specific section '''
                 if type(ebeams[r]) == None:
                     print(eventnum,'ebeam is None')
-                    continue
-                thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
-                if ebunch[r].process(thisl3):
-                    completeEvent += [True]
-                else:
-                    print(eventnum,'skipping for l3')
                     completeEvent += [False]
                     continue
+                else:
+                    thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
+                    if thisl3 == None:
+                        completeEvent +=[False]
 
-            if rungmd:
+
+## test thisgmde
+            thisgmde = None
+            if rungmd and type(thisgmde) == type(None):
                 if type(xgmds[r]) == None:
                     print(eventnum,'gmd is None')
-                    continue
-
-                thisgmde = xgmds[r].raw.energy(evt)
-                if type(thisgmde) == type(None):
-                    print(eventnum,'thisgmd energy is None')
-                    continue
-
-                if gmd[r].process( thisgmde):
-                    completeEvent += [True]
-                else:
-                    print(eventnum,'skipping for gmd')
                     completeEvent += [False]
                     continue
+                else:
+                    thisgmde = xgmds[r].raw.energy(evt)
+                    if thisgmde == None:
+                        completeEvent +=[False]
 
 
+## test hsds
             if runhsd:
-    
-                ''' HSD-Abaco section '''
-                goodevents = 0
                 for key in chans.keys(): # here key means 'port number'
-                    try:
-                        s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
-                        if port[r][key].process(s):
-                            goodevents += 1
-                            completeEvent += [True]
-                        else:
-                            print(eventnum, 'hsd process == False for %s'%key)
-                            completeEvent += [False]
-                            continue
-                    except:
-                        print(eventnum, 'failed hsd for some reason')
+                    if port[r][key].test(hsds[r].raw.waveforms(evt)[ chans[key] ][0]):
+                        completeEvent += [True]
+
+
+## process VLS
+            if runvls and bool(np.prod(completeEvent)):
+                spect[r].process(vlswv)
+
+## process ebeam
+            if runebeam and bool(np.prod(completeEvent)):
+                ebunch[r].process(thisl3)
+
+## process gmd
+            if rungmd and bool(np.prod(completeEvent)):
+                gmd[r].process(thisgmde)
+
+
+## process 
+            if runhsd and bool(np.prod(completeEvent)):
+                ''' HSD-Abaco section '''
+                for key in chans.keys(): # here key means 'port number'
+                    s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+                    if port[r][key].process(s):
+                        completeEvent += [True]
+                    else:
+                        print(eventnum, 'hsd process == False for %s'%key)
+                        completeEvent += [False]
                         continue
 
             if bool(np.prod(completeEvent)):

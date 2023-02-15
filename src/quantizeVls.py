@@ -72,7 +72,7 @@ def main():
     vlsnorm = np.zeros(vlsquant.getnbins())
     gmdnorm = np.zeros(gmdquant.getnbins())
 
-    print('len(gmdens)\tlen(vlscenters) are\t %i\t%s\trespectively'%(len(gmdens),len(vlscenters))
+    print('len(gmdens)\tlen(vlscenters) are\t %i\t%s\trespectively'%(len(gmdens),len(vlscenters)))
     print('Failing assertion, need to adopt the goodshot counter as implemented in quantizeGmd.py')
     assert len(gmdens)==len(vlscenters)
     #    return

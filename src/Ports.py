@@ -314,6 +314,11 @@ class Port:
                 self.slopes += de
         return True
 
+    def test(self,s):
+        if type(s) == type(None):
+            return False
+        return True
+
     def process(self,s):
         e:List[np.int32] = []
         de = []
