@@ -29,6 +29,7 @@ class Vls:
     @classmethod
     def update_h5(cls,f,spect,vlsEvents):
         grpvls = None
+        print(len(spect.vc),[v for v in spect.vc])
         if 'vls' in f.keys():
             grpvls = f['vls']
         else:
@@ -75,6 +76,9 @@ class Vls:
             print('Damnit, Vls!')
             return False
         else:
+            if (len(vlswv) != 2048):
+                print('vlsvector size error')
+                return False
             if (np.max(vlswv)-mean)<self.vlsthresh:
                 #print('weak Vls!')
                 return False
@@ -82,8 +86,6 @@ class Vls:
 
     def process(self, vlswv):
         mean = np.int16(np.mean(vlswv[1800:])) # this subtracts baseline
-        if (np.max(vlswv)-mean)<self.vlsthresh:
-            return False
         d = np.copy(vlswv-mean).astype(np.int16)
         c,s = getcentroid(d[self.winstart:self.winstop],pct=0.8)
         if self.initState:
