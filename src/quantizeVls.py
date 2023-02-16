@@ -15,6 +15,7 @@ def main():
     fnames = sys.argv[4:]
     ntofbins = np.uint32(sys.argv[1])
     nvlsbins = np.uint16(sys.argv[2])
+    vlsorder = 'third' # could also be 'second' for Neon. For run 95 with 850eV nominal energy (840eV actual) there is second only, third fell off the andor.
     ngmdbins = np.uint16(sys.argv[3])
     gmdquant = Quantizer(style='nonuniform',nbins = ngmdbins)
     vlsquant = Quantizer(style='nonuniform',nbins = nvlsbins)
@@ -31,7 +32,7 @@ def main():
         vlspitchcorrect = 0
         m = re.search('run_(\d+)',fname)
         if m:
-            vlspitchcorrect = 110 if int(m.group(1))<87 and int(m.group(1))>81 else 0
+            vlspitchcorrect = 141 if int(m.group(1))<87 and int(m.group(1))>81 else 0
         with h5py.File(fname,'r') as f:
             portkeys = [k for k in f.keys() if (re.search('port',k) and not re.search('_16',k) and not re.search('_2',k))]
             if len(quants.keys())==0:

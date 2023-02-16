@@ -1,0 +1,19 @@
+OK, doing this again by fitting pixels for the different nominal set point energies for runs 82-97
+Did it in interactive shell, so just putting notes here for now.
+>>> energies_corrected
+{'third': [920, 915, 910, 905, 900, 895, 890, 880, 875, 870, 885, 880], 'second': [920, 915, 910, 905, 900, 895, 890, 880, 875, 870, 850, 885, 880]}
+>>> corrections
+{'third': [141, 141, 141, 141, 141, 0, 0, 0, 0, 0, 0, 0], 'second': [142, 142, 142, 142, 142, 0, 0, 0, 0, 0, 0, 0, 0]}
+>>> pixels_corrected
+{'third': [185, 160, 135.5, 109.5, 84, 200, 174, 122.5, 95.5, 68.5, 149.5, 123.5], 'second': [1394, 1372.5, 1351.5, 1329, 1307, 1426.5, 1404.5, 1360, 1336.5, 1313.5, 1220, 1383.5, 1360.5]}
+>>> xvec = energies_corrected['second']
+>>> X = [np.power(np.array(xvec),int(i)) for i in range(3)]
+>>> Y = [pixels_corrected['second'][i] + corrections['second'][i] for i in range(len(pixels_corrected['second']))]
+>>> theta['second_full'] = np.inner(np.linalg.pinv(X).T,Y)
+>>> xvec = energies_corrected['third']
+>>> X = [np.power(np.array(xvec),int(i)) for i in range(3)]
+>>> Y = [pixels_corrected['third'][i] + corrections['third'][i] for i in range(len(pixels_corrected['third']))]
+>>> theta['third_full'] = np.inner(np.linalg.pinv(X).T,Y)
+>>> theta
+{'third_new': array([-1.44223389e+04,  2.77495984e+01, -1.27510040e-02]), 'second_new': array([-6.13580355e+03,  1.25018034e+01, -4.52722011e-03]), 'second_old': array([-8.52234286e+03,  1.73500000e+01, -7.14285714e-03]), 'third_old': array([-1.03753429e+04,  1.80500000e+01, -7.14285714e-03]), 'second_full': array([-5.47429421e+03,  1.09819297e+01, -3.65447439e-03]), 'third_full': array([-7.92701152e+03,  1.30325547e+01, -4.41548126e-03])}
+>>> 
