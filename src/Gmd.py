@@ -2,7 +2,7 @@ import numpy as np
 
 class Gmd:
     def __init__(self):
-        self.en = [[]]
+        self.en = []
         self.initState = True
         return 
 
@@ -16,14 +16,6 @@ class Gmd:
         grpgmd.create_dataset('gmdenergy',data=gmd.en,dtype=np.uint16)
         grpgmd.create_dataset('events',data=gmdEvents)
         return
-
-    def process_list(self,enlist,max_len):
-        if self.initState:
-            self.en = [[np.uint16(e*1000) for e in enlist] + [np.uint16(0) for i in range(max_len-len(enlist))]]
-            self.initState = False
-        else:
-            self.en += [[np.uint16(e*1000) for e in enlist] + [np.uint16(0) for i in range(max_len-len(enlist))]]
-        return self
 
     def test(self,e):
         if type(e)==type(None):

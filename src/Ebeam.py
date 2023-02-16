@@ -2,10 +2,11 @@ import numpy as np
 
 class Ebeam:
     def __init__(self):
-        self.l3 = [[]]
+        self.l3 = []
         self.l3offset=5100
         self.initState = True
         return 
+
     @classmethod
     def update_h5(cls,f,ebunch,ebeamEvents):
         grpebeam = None
@@ -19,14 +20,6 @@ class Ebeam:
 
     def setoffset(self,x):
         self.l3offset = int(x)
-        return self
-
-    def process_list(self,l3list,max_len):
-        if self.initState:
-            self.l3 = [[np.float16((l3-self.l3offset)) for l3 in l3list] + [0 for i in range(max_len-len(l3list))]]
-            self.initState = False
-        else:
-            self.l3 += [[np.float16(l3-self.l3offset) for l3 in l3list] + [0 for i in range(max_len-len(l3list))]]
         return self
 
     def test(self,l3in):
