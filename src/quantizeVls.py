@@ -64,16 +64,28 @@ def main():
 
     vlsquant.setbins(data=vlscenters)
     plt.step(vlsquant.bincenters(),vlsquant.histogram(data=vlscenters)/vlsquant.binwidths())
+    plt.title('vls')
+    plt.xlabel('vls pixels')
+    plt.ylabel('shots/pixel')
     plt.show()
 
     gmdquant.setbins(data=gmdens)
     plt.step(gmdquant.bincenters(),gmdquant.histogram(data=gmdens)/gmdquant.binwidths())
+    plt.title('gmd')
+    plt.xlabel('gmd value [uJ]')
+    plt.ylabel('shots/uJ')
     plt.show()
 
     vlsnorm = np.zeros(vlsquant.getnbins())
     gmdnorm = np.zeros(gmdquant.getnbins())
 
     assert len(gmdens)==len(vlscenters)
+
+    #/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier_1000vlsthresh/h5files/hits.tmox42619.run_088.h5
+    outname = './test.h5'
+    m = re.search('(^.*h5files)/hits\.(\w+)\..*\.h5',fnames[0])
+    if m:
+        outname = '%s/quantHist.%s.h5'%(m.group(1),m.group(2))
 
     for shot in range(len(gmdens)):
         gmdnorm[gmdquant.getbin(gmdens[shot])] += gmdens[shot]
@@ -82,6 +94,21 @@ def main():
             a = addresses[k][shot]
             n = nedges[k][shot]
             hist[k][vlsquant.getbin(vlscenters[shot]),gmdquant.getbin(gmdens[shot]),:] += quants[k].histogram(tofs[k][a:a+n]).astype(float)
+
+
+    with h5py.File(outname,'w') as o:
+        gmdgrp = o.create_group('gmd')
+        gmdgrp.create_dataset('norm',data = gmdnorm)
+        gmdgrp.create_dataset('qbins',data = gmdquant.binedges())
+        vlsgrp = o.create_group('vls')
+        vlsgrp.create_dataset('norm',data = vlsnorm)
+        vlsgrp.create_dataset('qbins',data = vlsquant.binedges())
+        for k in portkeys:
+            kgrp = o.create_group(k)
+            kgrp.create_dataset('hist',data= hist[k])
+            kgrp.create_dataset('qbins',data= quants[k].binedges())
+
+        
    
     return
 
