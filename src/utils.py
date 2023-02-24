@@ -7,6 +7,12 @@ import math
 def randomround(x:float,rng):
     return (np.int64(x) + np.int64(x%1>rng.random()))
 
+def inlims(x,low,high):
+    if x<low:
+        return False
+    if x>=high:
+        return False
+    return True
 
 def checkdet(runlist,detname):
     for r in runlist:

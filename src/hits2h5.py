@@ -65,8 +65,8 @@ def main():
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files'
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files'
-    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier_1000vlsthresh/h5files'
-    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_debug/h5files'
+    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier_1000vlsthresh/h5files'
+    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_santafe/h5files'
 
     if len(sys.argv)<3:
         print('syntax: ./hits2h5.py <nshots> <expname> <list of run numbers>')

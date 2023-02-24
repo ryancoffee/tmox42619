@@ -87,7 +87,7 @@ def main():
         for k in list(quants.keys())[:1]:
             #plt.plot(data[k],'.')
             #plt.plot(quants[k].bincenters(),data[k]/quants[k].binwidths(),'.')
-            plt.stem(quants[k].bincenters(),1000./quants[k].binwidths(),linefmt='b-',markerfmt=' ')
+            plt.step(quants[k].bincenters(),1000./quants[k].binwidths(),linefmt='b-',markerfmt=' ')
         plt.show()
         
     return

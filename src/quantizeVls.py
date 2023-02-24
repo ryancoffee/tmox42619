@@ -107,10 +107,10 @@ def main():
             kgrp = o.create_group(k)
             kgrp.create_dataset('hist',data= hist[k])
             kgrp.create_dataset('qbins',data= quants[k].binedges())
-
-        
-   
     return
+
+if __name__=='__main__':
+    main()
 
     '''
     crop=2
@@ -178,8 +178,5 @@ def main():
         plt.show()
         '''
 
-    return
 
-if __name__=='__main__':
-    main()
 
