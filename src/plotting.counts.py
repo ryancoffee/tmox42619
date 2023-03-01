@@ -14,6 +14,7 @@ def main(path,fname,runstring):
     #path = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier_1000vlsthresh/h5files/'
     #fname = 'hits.tmox42619.run_188.h5.counts.qtofs.qgmd.h5'
     documsum = True
+    oldstyle = False
     makeplots = False
     dofitting = False
     
@@ -133,32 +134,66 @@ def main(path,fname,runstring):
         if documsum:
             for k in portkeys:
                 gmdinds = [i for i in range(1,f[k]['hist'].shape[0],2)]
-                fig = plt.figure(figsize=(6,5))
-                ax1 = fig.add_subplot(111)
-                _= [ax1.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,np.cumsum(f[k]['hist'][()][i,:])*gmdscale[i]) for i in gmdinds]
-                #_= [ax1.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,(np.cumsum(f[k]['hist'][()][i,:])-np.sum(f[k]['hist'][()][i,:3]))*gmdscale[i]) for i in gmdinds]
-                ax1.set_xlabel('ToF [ns]')
-                ax1.set_ylabel('mean cumulative counts/shot')
-                ax1.set_ylim((0,25))# runs 082-09x
-                ax1.set_xlim((0,400))# runs 082-09x
-                #ax1.set_xlim((0,200))# nno runs 188-200
-                #ax1.set_ylim((0,15))# nno runs 188-200
-                #ax1.set_title('%s %s'%(runstring,k))
-                ax1.grid()
-                ax1.legend(['%i uJ'%int(0.5*(f['gmd']['bins'][()][i]+f['gmd']['bins'][()][i+1])+0.5) for i in gmdinds],bbox_to_anchor=(1.05,1),loc='upper left')
-                ax2 = plt.axes([0,0,1,1])
-                ip = InsetPosition(ax1,[.75,-.05,.5,.4])
-                ax2.set_axes_locator(ip)
-                mark_inset(ax1, ax2, loc1=2, loc2=4, fc="none", ec='0.5')
-                ax2.set_ylim((0,2))# runs 082-09x
-                ax2.set_xlim((22,24))# runs 082-09x
-                #ax2.set_xlim((25,40))# nno runs 188-200
-                #ax2.set_ylim((0,4))# nno runs 188-200
-                ax2.grid()
-                _= [ax2.step((f[k]['quantbins'][()][:128]-f[k]['quantbins'][()][0])/8./6.,(np.cumsum(f[k]['hist'][()][i,:128])-np.sum(f[k]['hist'][()][i,:3]))*gmdscale[i]) for i in gmdinds]
-                plt.tight_layout()
-                plt.savefig('%s/../figs/%s_cumcounts_inset_%s.png'%(path,runstring,k))
-                plt.show()
+                if oldstyle:
+                    fig = plt.figure(figsize=(6,5))
+                    ax1 = fig.add_subplot(111)
+                    _= [ax1.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,np.cumsum(f[k]['hist'][()][i,:])*gmdscale[i]) for i in gmdinds]
+                    #_= [ax1.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,(np.cumsum(f[k]['hist'][()][i,:])-np.sum(f[k]['hist'][()][i,:3]))*gmdscale[i]) for i in gmdinds]
+                    ax1.set_xlabel('ToF [ns]')
+                    ax1.set_ylabel('mean cumulative counts/shot')
+                    ax1.set_ylim((0,25))# runs 082-09x
+                    ax1.set_xlim((0,400))# runs 082-09x
+                    #ax1.set_xlim((0,200))# nno runs 188-200
+                    #ax1.set_ylim((0,15))# nno runs 188-200
+                    #ax1.set_title('%s %s'%(runstring,k))
+                    ax1.grid()
+                    ax1.legend(['%i uJ'%int(0.5*(f['gmd']['bins'][()][i]+f['gmd']['bins'][()][i+1])+0.5) for i in gmdinds],bbox_to_anchor=(1.05,1),loc='upper left')
+                    ax2 = plt.axes([0,0,1,1])
+                    ip = InsetPosition(ax1,[.75,-.05,.5,.4])
+                    ax2.set_axes_locator(ip)
+                    mark_inset(ax1, ax2, loc1=2, loc2=4, fc="none", ec='0.5')
+                    ax2.set_ylim((0,2))# runs 082-09x
+                    ax2.set_xlim((22,24))# runs 082-09x
+                    #ax2.set_xlim((25,40))# nno runs 188-200
+                    #ax2.set_ylim((0,4))# nno runs 188-200
+                    ax2.grid()
+                    _= [ax2.step((f[k]['quantbins'][()][:128]-f[k]['quantbins'][()][0])/8./6.,(np.cumsum(f[k]['hist'][()][i,:128])-np.sum(f[k]['hist'][()][i,:3]))*gmdscale[i]) for i in gmdinds]
+                    plt.tight_layout()
+                    plt.savefig('%s/../figs/%s_cumcounts_inset_%s.png'%(path,runstring,k))
+                    plt.show()
+                else:
+                    fig = plt.figure(figsize=(6,6))
+                    ax1 = fig.add_subplot(3,2,(1,2))
+                    qw = (f[k]['quantbins'][()][1:]-f[k]['quantbins'][()][:-1])/8./6.
+                    #_= [ax1.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,f[k]['hist'][()][i,:]/qw/f['gmd']['norm'][()][i]) for i in gmdinds]
+                    ax1.set_ylabel('counts/shot/ns')
+                    ax1.set_xlabel('ToF [ns]')
+                    ax2 = fig.add_subplot(3,2,(3,5))
+                    ax3 = fig.add_subplot(3,2,(4,6))
+                    for i in gmdinds[::2]:
+                        base = .001*i*np.ones(len(qw),dtype=float)
+                        ax1.vlines((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6. , base , base + f[k]['hist'][()][i,:]/f['gmd']['norm'][()][i]/qw,color=ax1._get_lines.get_next_color())
+                        cs = np.cumsum(f[k]['hist'][()][i,:])/f['gmd']['norm'][()][i]
+                        ax2.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,cs-cs[4]) 
+                        ax3.step((f[k]['quantbins'][()][:-1]-f[k]['quantbins'][()][0])/8./6.,cs-cs[90])
+                    ax1.set_xlim(0,230)
+                    ax1.set_ylim(0,0.02)
+                    ax2.set_xlim(20,60)
+                    ax2.set_ylim(0,0.05)
+                    ax2.set_ylabel('cum. counts/shot/uJ')
+                    ax3.set_ylabel('cum. counts/shot/uJ')
+                    ax3.set_xlim(130,230)
+                    ax3.set_ylim(0,0.1)
+                    ax2.set_xlabel('ToF [ns]')
+                    ax3.set_xlabel('ToF [ns]')
+                    ax3.yaxis.set_label_position('right')
+                    ax3.yaxis.tick_right()
+                    ax3.legend(['%i'%int(0.5*(f['gmd']['bins'][()][g]+f['gmd']['bins'][()][g+1])+0.5) for g in gmdinds[::2]])
+                    ax1.xaxis.set_label_position('top')
+                    ax1.xaxis.tick_top()
+                    plt.savefig('%s/../figs/%s_cumcounts_new_%s.png'%(path,runstring,k))
+                    plt.show()
+
         if makeplots:
             limdict = run188lims
             if runstring=='run_088':

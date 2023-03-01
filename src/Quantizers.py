@@ -13,16 +13,25 @@ class Quantizer:
         self.nbins:np.uint32 = nbins
         self.qbins:List[float] = []
 
-    def setbins(self,data):
+    def setbins(self,data,knob=0.0):
         if self.style=='nonuniform':
             ubins = np.arange(np.min(data),np.max(data)+1)
-            csum = np.cumsum( np.histogram(data,bins=ubins)[0] )
+            h = np.histogram(data,bins=ubins)[0]
+            csum = np.cumsum( h )
             yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
             self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
-        else:
+        elif self.style == 'santafe':
+            ubins = np.arange(np.min(data),np.max(data)+1,1<<4)
+            h = np.histogram(data,bins=ubins)[0]
+            csum = np.cumsum( h + knob*np.mean(h))
+            yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
+            self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
+        elif self.style == 'uniform':
             mx = np.max(data)+1
             mn = np.min(data)
             self.qbins = np.arange(mn,mx,step=np.float(mx - mn)/np.float(self.nbins+1))
+        else:
+            print('no style for quantizqation specified')
         return self
 
     def getbin(self,e):

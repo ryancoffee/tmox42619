@@ -13,7 +13,10 @@ def main():
         return
 
     ## swithch to control uniform or nonuniform binning
-    unonu = 'nonuniform'
+    unonu = 'santafe'
+    qknob = float(10.0)
+    target = 'unk'
+    plotting = False
 
     donorm = False
     fnames = sys.argv[4:]
@@ -58,14 +61,16 @@ def main():
 
     for k in portkeys:
         if len(tofs[k])>1:
-            quants[k].setbins(data=tofs[k])
+            quants[k].setbins(data=tofs[k],knob=qknob)
 
     gmdquant.setbins(data=gmdens)
-    plt.step(gmdquant.bincenters(),gmdquant.histogram(data=gmdens)/gmdquant.binwidths())
-    plt.title('gmd')
-    plt.xlabel('gmd value [uJ]')
-    plt.ylabel('shots/uJ')
-    plt.show()
+    if plotting:
+
+        plt.step(gmdquant.bincenters(),gmdquant.histogram(data=gmdens)/gmdquant.binwidths())
+        plt.title('gmd')
+        plt.xlabel('gmd value [uJ]')
+        plt.ylabel('shots/uJ')
+        plt.show()
 
     gmdnorm = np.zeros(gmdquant.getnbins())
 
@@ -73,7 +78,7 @@ def main():
     outname = './test.h5'
     m = re.search('(^.*h5files)/hits\.(\w+)\..*\.h5',fnames[0])
     if m:
-        outname = '%s/quantHist.%s.h5'%(m.group(1),m.group(2))
+        outname = '%s/quantHist.%s.qknob%.1f.%s.h5'%(m.group(1),target,qknob,m.group(2))
 
     for shot,gmden in enumerate(gmdens):
         #gmdnorm[gmdquant.getbin(gmdens[shot])] += gmdens[shot]
@@ -94,19 +99,25 @@ def main():
             kgrp.create_dataset('qbins',data= quants[k].binedges())
             print(np.max(hist[k]))
 
-    for k in hist.keys():
-        fig,ax = plt.subplots(1,1,figsize=(8,8))
-        im = ax.pcolor(np.array(hist[k]).reshape(len(hist[k])//quants[k].getnbins(),-1).T)
-        ax.set_xlabel('shot number (pulse energy selected)')
-        ax.set_ylabel('quantized ToF bin')
-        ax.set_title('%s binning: %s: %i-%iuJ'%(unonu,k,gmdlow,gmdhigh))
-        plt.colorbar(im,ax=ax)
-        plt.savefig('./figs/quantizedSantaFe_runs%s_%s_%s_gmd_%i-%i.hist.png'%('-'.join(runlist),unonu,k,gmdlow,gmdhigh))
-        if k=='port_12':
-            plt.show()
+    if plotting:
+        for k in hist.keys():
+            fig,ax = plt.subplots(1,1,figsize=(8,8))
+            im = ax.pcolor(np.array(hist[k]).reshape(len(hist[k])//quants[k].getnbins(),-1).T,vmax=2)
+            if not unonu=='nonuniform':
+                ax.set_ylim(0,1<<7)
+            ax.set_xlabel('shot number (pulse energy selected)')
+            ax.set_ylabel('quantized ToF bin')
+            ax.set_title('%s binning: %s: %i-%iuJ'%(unonu,k,gmdlow,gmdhigh))
+            plt.colorbar(im,ax=ax)
+            plt.savefig('./figs/quantizedSantaFe_qknob%.1f_runs%s_%s_%s_gmd_%i-%i.hist.png'%(qknob,'-'.join(runlist),unonu,k,gmdlow,gmdhigh))
+            if k=='port_12':
+                plt.show()
 
+    '''
         fig,ax = plt.subplots(1,1,figsize=(8,8))
         im = ax.pcolor(np.array(rate[k]).reshape(len(rate[k])//quants[k].getnbins(),-1).T)
+        if not unonu=='nonuniform':
+            ax.set_ylim(0,1<<7)
         ax.set_xlabel('shot number (pulse energy selected)')
         ax.set_ylabel('quantized ToF bin')
         ax.set_title('%s hitrate: %s: %i-%iuJ'%(unonu,k,gmdlow,gmdhigh))
@@ -114,6 +125,7 @@ def main():
         plt.savefig('./figs/quantizedSantaFe_runs%s_%s_%s_gmd_%i-%i.rates.png'%('-'.join(runlist),unonu,k,gmdlow,gmdhigh))
         if k=='port_12':
             plt.show()
+       '''
     return
 
 if __name__=='__main__':
