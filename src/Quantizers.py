@@ -17,14 +17,14 @@ class Quantizer:
         if self.style=='nonuniform':
             ubins = np.arange(np.min(data),np.max(data)+1)
             h = np.histogram(data,bins=ubins)[0]
-            csum = np.cumsum( h )
+            csum = np.cumsum( h.astype(float) )
             yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
             self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
         elif self.style == 'santafe':
-            ubins = np.arange(np.min(data),np.max(data)+1,1<<4)
+            ubins = np.arange(np.min(data),np.max(data)+1)
             h = np.histogram(data,bins=ubins)[0]
-            csum = np.cumsum( h + knob*np.mean(h))
-            yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
+            csum = np.cumsum( h.astype(float) + float(knob*np.mean(h)))
+            yb = np.arange(0,csum[-1],step=float(csum[-1])/float(self.nbins+1),dtype=float)
             self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
         elif self.style == 'uniform':
             mx = np.max(data)+1
@@ -71,6 +71,7 @@ class Quantizer:
             q = cls(style=f['qbins'].attrs['style'],nbins=f['qbins'].attrs['nbins'])
             q.copybins(f['qbins'][()])
         return q
+
 
 def main():
     if len(sys.argv)<2:
