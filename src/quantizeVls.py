@@ -15,7 +15,7 @@ def main():
     fnames = sys.argv[4:]
     ntofbins = np.uint32(sys.argv[1])
     nvlsbins = np.uint16(sys.argv[2])
-    vlsorder = 'third' # could also be 'second' for Neon. For run 95 with 850eV nominal energy (840eV actual) there is second only, third fell off the andor.
+    vlsorder = 'third' # could also be 'second' for Neon. For run 95 with 850eV nominal energy (840eV actual) there is second only, third fell off the andor., NNO is only second order
     ngmdbins = np.uint16(sys.argv[3])
     gmdquant = Quantizer(style='nonuniform',nbins = ngmdbins)
     vlsquant = Quantizer(style='nonuniform',nbins = nvlsbins)

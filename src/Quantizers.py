@@ -10,6 +10,9 @@ from typing import List
 class Quantizer:
     def __init__(self,style='nonuniform',nbins=1024):
         self.style:str = style
+        self.wave:bool = False
+        if style == 'wave':
+            self.wave = True
         self.nbins:np.uint32 = nbins
         self.qbins:List[float] = []
 
@@ -30,9 +33,23 @@ class Quantizer:
             mx = np.max(data)+1
             mn = np.min(data)
             self.qbins = np.arange(mn,mx,step=np.float(mx - mn)/np.float(self.nbins+1))
+        elif self.style == 'wave':
+            if self.wave:
+                print(len(data))
+                print(len(data[0]))
+                wave = np.mean(data,axis=1)
+                wave -= np.min(wave)
+                csum = np.cumsum(wave)
+                yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
+                self.qbins = np.interp(yb,csum,np.arange(csum.shape[0]))
+            else:
+                print('attempting to use waveform version of quantizer on non wave style.')
         else:
             print('no style for quantizqation specified')
         return self
+
+    def iswave():
+        return bool(self.wave)
 
     def getbin(self,e):
         b = 0
@@ -42,14 +59,28 @@ class Quantizer:
 
     def getnbins(self):
         return self.nbins
+
     def histogram(self,data):
-        return np.histogram(data,bins=self.qbins)[0]
+        if self.wave:
+            j = 0
+            h = np.zeros(self.qbins.shape[0]-1,dtype=float)
+            for i in range(self.qbins.shape[0]-2):
+                while j<self.qbins[i+1] and j<data.shape[0]:
+                    h[i] += data[j]  # / float(self.qbins[i+1]-self.qbins[i]) # keep it as the integral of signal inside the bin window... convert to probability later using the bins stored in .h5
+                    j+=1
+            return h
+        else:
+            return np.histogram(data,bins=self.qbins)[0]
+
     def bincenters(self):
         return (self.qbins[:-1] + self.qbins[1:])/2.0
     def binedges(self):
         return self.qbins
     def binwidths(self):
         return self.qbins[1:]-self.qbins[:-1]
+
+    def getstyle(self):
+        return self.style
 
     @classmethod
     def saveH5(cls,fname,klist,qdict):
