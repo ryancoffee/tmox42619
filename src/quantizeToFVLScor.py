@@ -22,7 +22,6 @@ def main():
     fnames = sys.argv[5:]
     ntofbins = np.uint32(sys.argv[1])
     nvlsbins = np.uint32(sys.argv[2])
-    vlsorder = 'second' # second for the NNO data
     gmdlow,gmdhigh = np.uint16(sys.argv[3]),np.uint16(sys.argv[4])
     tofs = {} 
     addresses = {} 

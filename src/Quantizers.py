@@ -35,10 +35,11 @@ class Quantizer:
             self.qbins = np.arange(mn,mx,step=np.float(mx - mn)/np.float(self.nbins+1))
         elif self.style == 'wave':
             if self.wave:
-                print(len(data))
-                print(len(data[0]))
-                wave = np.mean(data,axis=1)
+                ubins = np.arange(data[0].shape[0]+1)
+                wave = np.mean(data,axis=0)
                 wave -= np.min(wave)
+                #plt.plot(wave)
+                #plt.show()
                 csum = np.cumsum(wave)
                 yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
                 self.qbins = np.interp(yb,csum,np.arange(csum.shape[0]))
