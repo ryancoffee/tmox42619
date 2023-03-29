@@ -4,8 +4,12 @@ import numpy as np
 import h5py
 import sys
 import re
+import math
+from utils import fitpoly,fitcurve,fitval
 import matplotlib.pyplot as plt
 from typing import List
+
+plotting = False
 
 class Quantizer:
     def __init__(self,style='nonuniform',nbins=1024):
@@ -23,16 +27,43 @@ class Quantizer:
             csum = np.cumsum( h.astype(float) )
             yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
             self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
+
         elif self.style == 'santafe':
             ubins = np.arange(np.min(data),np.max(data)+1)
             h = np.histogram(data,bins=ubins)[0]
             csum = np.cumsum( h.astype(float) + float(knob*np.mean(h)))
             yb = np.arange(0,csum[-1],step=float(csum[-1])/float(self.nbins+1),dtype=float)
             self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
+
+        elif self.style=='fusion': # careful, this depends on the params.expand I believe
+            ubins = np.arange(np.min(data),np.max(data)+1)
+
+        elif self.style=='bees': # careful, this depends on the params.expand I believe
+            ubins = np.arange(np.min(data),np.max(data)+1)
+            h = np.histogram(data,ubins)[0]
+            B = (ubins[:-1]+ubins[1:])/2.
+            inds = np.where(h>0)
+            x = np.log2(B[inds])
+            y = np.log2(h[inds])
+            x0,theta = fitpoly(x,y,7)
+            inds = np.where((B<(1<<10)) * (h>0))
+            ym = np.mean(np.log2(B[inds]))
+            distro = np.power(2.,fitcurve(np.log2(B)-x0,theta))
+            if plotting:
+                plt.loglog(B,h,'.')
+                plt.loglog(B,distro)
+                plt.grid()
+                plt.title('power = %.3f'%theta[1])
+                plt.show()
+            csum = np.cumsum(distro)
+            yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
+            self.qbins = np.interp(yb,csum,B)
+
         elif self.style == 'uniform':
             mx = np.max(data)+1
             mn = np.min(data)
             self.qbins = np.arange(mn,mx,step=np.float(mx - mn)/np.float(self.nbins+1))
+
         elif self.style == 'wave':
             if self.wave:
                 ubins = np.arange(data[0].shape[0]+1)
@@ -103,7 +134,6 @@ class Quantizer:
             q = cls(style=f['qbins'].attrs['style'],nbins=f['qbins'].attrs['nbins'])
             q.copybins(f['qbins'][()])
         return q
-
 
 def main():
     if len(sys.argv)<2:
