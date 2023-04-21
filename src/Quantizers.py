@@ -83,6 +83,15 @@ class Quantizer:
     def iswave():
         return bool(self.wave)
 
+    def getbins(self,ens):
+        out = []
+        for e in ens:
+            b = 0
+            while (self.qbins[b]<e and b<self.nbins-1):
+                b += 1
+            out += [b]
+        return out
+
     def getbin(self,e):
         b = 0
         while (self.qbins[b]<e and b<self.nbins-1):

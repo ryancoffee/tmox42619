@@ -1,3 +1,7 @@
+# Photon energy - GMD correlation
+It is clear, here from Run 132 (3rd order VLS spectrum near 600eV photon energy) that the correlation tends to lower photon energy (toward left) for higher x-ray intensity shots.  
+![plot](./figs/VlsVsGmd.png)
+
 # Nonuniform Quantization
 "Knowledge-based quantization (cumsum) reather than a training-based quantization (Berthie)" Audrey Corbeil Therrien
 Using this src/quantizeGmd.py and figs/plotting.counts.py to make figures related to count rates. 

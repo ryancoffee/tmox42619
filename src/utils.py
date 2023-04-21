@@ -54,6 +54,18 @@ def fitpoly(x,y,order=4):
     theta = np.linalg.pinv( mypoly(np.array(x-x0).astype(float),order=order) ).dot(np.array(y).astype(float)) # fit a polynomial (order 3) to the points
     return x0,theta
 
+def fitval(x,theta):
+    y = float(0.)
+    for p,th in enumerate(theta):
+        y += float(th)*math.pow(x,int(p))
+    return y
+
+def fitcurve(x,theta):
+    y = np.zeros(x.shape,dtype=float)
+    for p in range(theta.shape[0]):
+        y += theta[p]*np.power(x,int(p))
+    return y
+
 def getcentroid(inds,spec):
     x = inds
     y = spec 
