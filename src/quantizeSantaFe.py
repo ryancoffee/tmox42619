@@ -17,6 +17,7 @@ def main():
     qknob = float(0.0)
     target = 'unk'
     target = 'Ne'
+    target = 'NNO'
     plotting = False
 
     donorm = False

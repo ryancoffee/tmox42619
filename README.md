@@ -1,10 +1,16 @@
+# Multi-retardation
+![plot](./figures/multiretardationNNO.png')
+We see the different spectra for each of the ports.  This is for the quantized combination of runs 131-133.  
+We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon enerrgy.
+![plot](./figures/multiretardationNNO_calibpoints.png')
+
 # Photon energy - GMD correlation
 It is clear, here from Run 132 (3rd order VLS spectrum near 600eV photon energy) that the correlation tends to lower photon energy (toward left) for higher x-ray intensity shots.  
-![plot](./figs/VlsVsGmd.png)
+![plot](./figures/VlsVsGmd.png)
 
 # Nonuniform Quantization
 "Knowledge-based quantization (cumsum) reather than a training-based quantization (Berthie)" Audrey Corbeil Therrien
-Using this src/quantizeGmd.py and figs/plotting.counts.py to make figures related to count rates. 
+Using this src/quantizeGmd.py and figures/plotting.counts.py to make figures related to count rates. 
 So far, the runs e.g. 188 and 189 are grouped into the quantized histogramed .h5 files together with 188... later, do Neon and there only using one run for each set of figures. 
 The count rate looks to be about 1-3 per feature spectral feature. 
 
@@ -39,13 +45,13 @@ I have hardcoded these vls pitch correction into quantizeVls.py.
 
 # Raw waveforms
 Mostly this is to get everyone to see we are using very little of the uint16 bit-depth for our waveforms in abaco high sample rate digitizers (hsd).
-![Concatenated raw waveforms](./figs/samplerawvalues316.png)
-![plot](./figs/samplerawvalues.png)
+![Concatenated raw waveforms](./figures/samplerawvalues316.png)
+![plot](./figures/samplerawvalues.png)
 
 ## Updated for Christos.
 src/waves2h5.py calls processChristos() which adds every raw waveform along with the adc baseline corrected, and the corresponding logic vector.  
 This is done by including the Port.addeverysample() method to processChristos().  
-![Example Shot](./figs/ForChristos.png)
+![Example Shot](./figures/ForChristos.png)
 This example is from file ```/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_Christos/h5files/waves.tmox42619.run_084.h5```
 
 # Hacking multicolor
@@ -84,7 +90,7 @@ This will also host code that analyzes for the xcomm118 for runs in the 400's si
 # setting up  
 First set the configuration .h5 file with something like this...
 ```bash
-./src/set_configs.py /reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files/tmox42619.hsdconfig.h5
+./src/set_configures.py /reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files/tmox42619.hsdconfig.h5
 ```
 Here one must be sure that the file written is indeed what will be read in ```./src/hits2h5.py```
 the ```expname``` gets used to pull the config file, at least until we implement the parser.  
@@ -94,7 +100,7 @@ scratchpath=/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files
 expname=tmox42619
 runnum=23
 shots=100
-./src/set_configs.py ${scratchpath}/${expname}.hsdconfig.h5
+./src/set_configures.py ${scratchpath}/${expname}.hsdconfig.h5
 ./src/hits2h5.py ${expname} ${runnum} ${nshots}
 ```
 
@@ -129,7 +135,7 @@ use the fits to produce a "weiner filter"
 Then approximate the weiner filter with a reverse sin() version of the erf()... e.g. 1 if i<icen-w;0 if i>icen+w; otherwise 0.5*( 1.-sin(pi/2*(i-icen)/w) )  
 this icen+w is also where we truncate the eigvecs, beyond this is out of signal.  
 
-![plot](./figs/run41.xtcav.nolasing.eigvals.png)
+![plot](./figures/run41.xtcav.nolasing.eigvals.png)
 Eigenvalues for Run 41 nolasing 
 
 ## running eigen\_xtcav.py with slurm
