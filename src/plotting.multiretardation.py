@@ -5,6 +5,7 @@ import numpy as np
 import h5py
 import re
 import matplotlib.pyplot as plt
+from utils import fitpoly,fitval
 
 def main(fname):
     data = {}
@@ -44,35 +45,49 @@ def main(fname):
     calib = {}
     xvals = {}
     yvals = {}
+    x0 = {}
+    theta = {}
     for k in portkeys:
         calib.update({k:[]})
-        if valenceO[k] != '-':
-            calib[k] += [600.-41.6,valenceO[k]]
         if valenceN[k] != '-':
             calib[k] += [600.-37.3,valenceN[k]]
-        if photosO[k] != '-':
-            calib[k] += [600.-543.1,photosO[k]]
-        if photosN1[k] != '-':
-            calib[k] += [600.-409.9,photosN1[k]]
-        if photosN2[k] != '-':
-            calib[k] += [600.-405.9,photosN2[k]]
+        if valenceO[k] != '-':
+            calib[k] += [600.-41.6,valenceO[k]]
         if augersO[k] != '-':
             calib[k] += [501.,augersO[k]]
         if augersN[k] != '-':
             calib[k] += [373.,augersN[k]]
-        print(calib[k])
+        if photosN2[k] != '-':
+            calib[k] += [600.-405.9,photosN2[k]]
+        if photosN1[k] != '-':
+            calib[k] += [600.-409.9,photosN1[k]]
+        if photosO[k] != '-':
+            calib[k] += [600.-543.1,photosO[k]]
+        #print(calib[k])
         xvals.update({k:np.log2(calib[k][1::2])})
         yvals.update({k:np.log2(calib[k][0::2])})
-        print(xvals[k],yvals[k])
-        plt.plot(xvals[k],yvals[k],'-',label='%s'%(k))
+        #print(xvals[k],yvals[k])
+        xnaught=0
+        th=[]
+        if len(xvals[k])>3:
+            xnaught,th = fitpoly(xvals[k],yvals[k],order=2)
+        elif len(xvals[k])>1:
+            xnaught,th = fitpoly(xvals[k],yvals[k],order=1)
+            '''
+            x0 = np.mean(xvals[k])
+            theta = [ (yvals[k][-1]-yvals[k][0])/(xvals[k][-1]-xvals[k][0]) ]
+            '''
+        x0.update({k:xnaught})
+        theta.update({k:th})
+        plt.plot(xvals[k],yvals[k],'.',label='%s'%(k))
+        fitx = np.arange(np.min(xvals[k]),np.max(xvals[k]),.025)
+        fity = [fitval(x-x0[k],theta[k]) for x in fitx]
+        plt.plot(fitx,fity,'-',color='k')#,label=fitstring%fitvals)
     plt.legend()
     plt.xlabel('log2(ToF)')
-    plt.ylabel('log2(photon Energy) [log2(eV)])')
+    plt.ylabel('log2(electron Energy) [log2(eV)])')
     plt.savefig('./figures/multiretardationNNO_calibpoints.png')
     plt.show()
-
-
-
 
     print(gmdwin)
     return
