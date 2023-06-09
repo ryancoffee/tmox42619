@@ -239,7 +239,7 @@ def main():
             if runhsd and bool(np.prod(completeEvent)):
                 ''' HSD-Abaco section '''
                 for key in chans.keys(): # here key means 'port number'
-                    s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) 
+                    s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) # presumably 12 bits unsigned input, cast as int16_t since will immediately in-place subtract baseline
                     port[r][key].process(s)
 
 ## redundant events vec

@@ -141,7 +141,7 @@ class Port:
             for k in port[key].waves.keys():
                 rawgrp.create_dataset(k,data=port[key].raw[k].astype(np.uint16),dtype=np.uint16)
                 wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
-                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int16),dtype=np.int16)
+                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int32),dtype=np.int32)
             g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
             g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
             g.attrs.create('t0',data=port[key].t0,dtype=float)
