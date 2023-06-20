@@ -1,8 +1,8 @@
 # Multi-retardation
-![plot](./figures/multiretardationNNO.png')
+![plot](./figures/multiretardationNNO.png)
 We see the different spectra for each of the ports.  This is for the quantized combination of runs 131-133.  
 We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon enerrgy.
-![plot](./figures/multiretardationNNO_calibpoints.png')
+![plot](./figures/multiretardationNNO_calibpoints.png)
 
 # Photon energy - GMD correlation
 It is clear, here from Run 132 (3rd order VLS spectrum near 600eV photon energy) that the correlation tends to lower photon energy (toward left) for higher x-ray intensity shots.  
