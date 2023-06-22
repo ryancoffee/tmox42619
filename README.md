@@ -4,6 +4,41 @@ We see the different spectra for each of the ports.  This is for the quantized c
 We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon enerrgy.
 ![plot](./figures/multiretardationNNO_calibpoints.png)
 
+# Recalibration for NNO
+Runs 132-134, using ```./src/Calib_Multiretardation.py``` we get the following fit values in ```E(i) = theta0 + theta1*i + theta2* i**2``` then prints output:
+```bash
+coffee@pslogin03:x42619$ ./src/Calib_Multiretardation.py 
+port_0 fit  nam (300,400)   :   390.167 -0.168  0.000   
+port_0 fit  oam (400,525)   :   499.806 0.606   -0.033  
+port_1 fit  nam (300,400)   :   368.766 0.109   -0.001  
+port_1 fit  oam (400,525)   :   508.829 -0.249  -0.005  
+port_1 fit  IV (525,600)    :   569.103 -1.355  
+port_12 fit n1s (100,300)   :   212.450 -0.156  
+port_12 fit nam (300,400)   :   415.556 -1.297  0.008   
+port_12 fit oam (400,525)   :   519.394 -1.160  -0.003  
+port_12 fit IV (525,600)    :   564.891 -0.955  
+port_13 fit n1s (100,300)   :   219.296 -0.577  
+port_13 fit nam (300,400)   :   419.980 -3.328  0.050   
+port_13 fit oam (400,525)   :   528.780 -6.415  0.247   
+port_13 fit IV (525,600)    :   571.000 -4.200  
+port_14 fit oam (400,525)   :   522.642 -0.415  0.001   
+port_14 fit IV (525,600)    :   565.692 -0.258  
+port_15 fit oam (400,525)   :   519.583 -0.585  0.003   
+port_15 fit IV (525,600)    :   570.288 -0.712  
+port_4 fit  n1s (100,300)   :   235.138 -0.217  
+port_4 fit  nam (300,400)   :   399.831 -0.484  0.002   
+port_4 fit  oam (400,525)   :   524.873 -1.314  0.011   
+port_4 fit  IV (525,600)    :   564.318 -0.636  
+port_5 fit  n1s (100,300)   :   217.715 -0.441  
+port_5 fit  nam (300,400)   :   419.784 -2.742  0.034   
+port_5 fit  oam (400,525)   :   519.664 -3.004  0.044   
+port_5 fit  IV (525,600)    :   564.700 -2.100  
+```
+where ```nam``` is N~AM~ the Auger-Meitner range and ```o1s``` is O~1s~ region.  The ```IV``` is used for what seems to be the O~2s~ and N~2s~ inner valence photo-electron features.
+Note that the vfitting here is based on 256 non-uniform quantized bins computed for the full spectrum of all three runs 132, 133, and 134 combined.
+The O~1s~ photoelectron feature is only one peak in ports 13 and 5, though they have 25 eV difference in retardation.  This may or may not help calibrate since the fitting procedure here relies on at least two points for fit the polynomial of orcer n-1 for n points in the range.
+
+
 # Photon energy - GMD correlation
 It is clear, here from Run 132 (3rd order VLS spectrum near 600eV photon energy) that the correlation tends to lower photon energy (toward left) for higher x-ray intensity shots.  
 ![plot](./figures/VlsVsGmd.png)

@@ -14,6 +14,31 @@ def cfdLogic(s,invfrac=1<<2,offset=10):
     result[:-offset] = (1<<invfrac)*s[offset:]-s[:-offset]
     return result
 
+def fftLogic_f16(s,inflate=1,nrolloff=128):
+    sz = s.shape[0]
+    result = np.zeros(sz*inflate,dtype=np.int16)
+    rolloff_vec = (1<<3)*(1.+np.cos(np.arange(nrolloff<<1,dtype=float)*2*np.pi/float(nrolloff))) # careful, operating on left and right of middle indices in one go...2pi now not pi.
+    smirror = np.append(s,np.flip(s,axis=0)).astype(np.int16)
+    S = fft(smirror,axis=0)
+    SR = np.copy(S.real).astype(np.int16)
+    SI = np.copy(S.imag).astype(np.int16)
+    SR[sz-nrolloff:sz+nrolloff] *= rolloff_vec.astype(np.int16)
+    SI[sz-nrolloff:sz+nrolloff] *= rolloff_vec.astype(np.int16)
+    SR[:sz-nrolloff] <<= 4
+    SR[sz+nrolloff:] <<= 4
+    SI[:sz-nrolloff] <<= 4
+    SI[sz+nrolloff:] <<= 4
+    S = SR + 1j*SI
+    if inflate>1:
+        S = np.concatenate((S[:sz],np.zeros(2*sz*(inflate-1),dtype=complex),S[sz:]))
+    Sy = np.copy(S)*sz
+    S[:sz] *= 1j*np.arange(sz,dtype=np.float16)/(sz)
+    S[-sz:] *= np.flip(-1j*np.arange(sz,dtype=np.float16)/(sz),axis=0)
+    y = ifft(Sy,axis=0).real[:(inflate*sz)].astype(np.int16)
+    dy = ifft(S,axis=0).real[:(inflate*sz)].astype(np.int16)
+    return -((y>>4)*(dy>>4)).astype(np.int16)
+
+
 def fftLogic(s,inflate=1,nrolloff=128):
     sz = s.shape[0]
     result = np.zeros(sz*inflate,dtype=np.int32)
@@ -199,9 +224,9 @@ class Port:
             x0 = float(stop) - float(d[stop])/float(d[stop]-d[stop-1])
             i += 1
             v = float(self.expand)*float(x0)
-            tofs += [np.uint64(randomround(v,self.rng))] 
+            tofs += [np.uint32(randomround(v,self.rng))] 
             slopes += [d[stop]-d[stop-1]] 
-        return tofs,slopes,np.uint32(len(tofs))
+        return tofs,slopes,np.uint64(len(tofs))
 
     def scanedges(self,d):
         tofs = []
@@ -257,11 +282,12 @@ class Port:
             return False
         else:
             if len(self.addresses)%100==0:
-                r = np.copy(s)
-            for adc in range(self.nadcs):
+                r = np.copy(s).astype(np.uint16)
+            for adc in range(self.nadcs): # correcting systematic baseline differences for the four ADCs.
                 b = np.mean(s[adc:self.baselim+adc:self.nadcs])
                 s[adc::self.nadcs] = (s[adc::self.nadcs] ) - np.int32(b)
-            logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
+            #logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
+            logic = fftLogic_f16(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
             e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
 
         if self.initState:
