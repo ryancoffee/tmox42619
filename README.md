@@ -34,9 +34,9 @@ port_5 fit  nam (300,400)   :   419.784 -2.742  0.034
 port_5 fit  oam (400,525)   :   519.664 -3.004  0.044   
 port_5 fit  IV (525,600)    :   564.700 -2.100  
 ```
-where ```nam``` is N~AM~ the Auger-Meitner range and ```o1s``` is O~1s~ region.  The ```IV``` is used for what seems to be the O~2s~ and N~2s~ inner valence photo-electron features.
+where ```nam``` is N<sub>AM</sub> the Auger-Meitner range and ```o1s``` is O<sub>1s</sub> region.  The ```IV``` is used for what seems to be the O<sub>2s</sub> and N<sub>2s</sub> inner valence photo-electron features.
 Note that the vfitting here is based on 256 non-uniform quantized bins computed for the full spectrum of all three runs 132, 133, and 134 combined.
-The O~1s~ photoelectron feature is only one peak in ports 13 and 5, though they have 25 eV difference in retardation.  This may or may not help calibrate since the fitting procedure here relies on at least two points for fit the polynomial of orcer n-1 for n points in the range.
+The O<sub>1s</sub> photoelectron feature is only one peak in ports 13 and 5, though they have 25 eV difference in retardation.  This may or may not help calibrate since the fitting procedure here relies on at least two points for fit the polynomial of orcer n-1 for n points in the range.
 
 
 # Photon energy - GMD correlation
