@@ -37,7 +37,6 @@ class CalibData:
         for k in self.portkeys:
             self.theta[k] = {}
 
-
     def fit(self):
         for k in self.portkeys:
             for w in self.wins.keys():
