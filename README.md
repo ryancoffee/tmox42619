@@ -38,6 +38,9 @@ where ```nam``` is N<sub>AM</sub> the Auger-Meitner range and ```o1s``` is O<sub
 Note that the vfitting here is based on 256 non-uniform quantized bins computed for the full spectrum of all three runs 132, 133, and 134 combined.
 The O<sub>1s</sub> photoelectron feature is only one peak in ports 13 and 5, though they have 25 eV difference in retardation.  This may or may not help calibrate since the fitting procedure here relies on at least two points for fit the polynomial of orcer n-1 for n points in the range.
 
+## Hand calibrated  
+Piece-wise linear calibration.  
+![plot](./figures/runs132-134_n1s.png) ![plot](figures/runs132-134_nam.png) ![plot](figures/runs132-134_oam.png) ![plot](figures/runs132-134_IV.png)
 
 # Photon energy - GMD correlation
 It is clear, here from Run 132 (3rd order VLS spectrum near 600eV photon energy) that the correlation tends to lower photon energy (toward left) for higher x-ray intensity shots.  

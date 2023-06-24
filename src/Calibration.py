@@ -43,10 +43,10 @@ class CalibData:
                 x = self.data[k]['q']
                 y = self.data[k]['e'] 
                 inds = np.where((y>self.wins[w][0])*(y<self.wins[w][1]))
-                X = np.ones((len(inds[0]),len(inds[0])))
+                X = np.ones((2,len(inds[0])))
                 Y = y[inds]
                 if X.shape[0] > 1:
-                    for i in range(1,X.shape[0]):
+                    for i in range(X.shape[0]):
                         X[i,:] = np.power(x[inds],int(i))
                     self.theta[k][w] = np.dot(Y,np.linalg.pinv(X))
                     printstring = '%s fit\t%s (%i,%i)\t:\t'%(k,w,self.wins[w][0],self.wins[w][1])
