@@ -4,6 +4,10 @@ We see the different spectra for each of the ports.  This is for the quantized c
 We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon enerrgy.
 ![plot](./figures/multiretardationNNO_calibpoints.png)
 
+#Obfuscation
+![plot](./figures/qbinsRecovered.png)  
+![plot](./figures/qbinsSnow_ports_12_0.png)  
+
 # Recalibration for NNO
 Runs 132-134, using ```./src/Calib_Multiretardation.py``` we get the following fit values in ```E(i) = theta0 + theta1*i + theta2* i**2``` then prints output:
 ```bash

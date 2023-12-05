@@ -114,7 +114,7 @@ def main():
             ax.set_ylabel('quantized ToF bin')
             ax.set_title('%s binning: %s: %i-%iuJ'%(unonu,k,gmdlow,gmdhigh))
             plt.colorbar(im,ax=ax)
-            plt.savefig('./figs/quantizedSantaFe_qknob%.1f_runs%s_%s_%s_gmd_%i-%i.hist.png'%(qknob,'-'.join(runlist),unonu,k,gmdlow,gmdhigh))
+            plt.savefig('./figs/quantized_qknob%.1f_runs%s_%s_%s_gmd_%i-%i.hist.png'%(qknob,'-'.join(runlist),unonu,k,gmdlow,gmdhigh))
             if k=='port_12':
                 plt.show()
 
