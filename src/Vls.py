@@ -3,8 +3,9 @@ import typing
 from typing import List
 import h5py
 import sys
+import math
 
-def getcentroid(data,pct=.8):
+def getCentroid(data,pct=.8):
     csum = np.cumsum(data.astype(float))
     s = float(csum[-1])*pct
     csum /= csum[-1]
@@ -13,6 +14,20 @@ def getcentroid(data,pct=.8):
     tmp[inds] = data[inds].astype(float)
     num = np.sum(tmp*np.arange(data.shape[0],dtype=float))
     return (num/s,np.uint64(s))
+
+def shouldSplit(data):
+    inds = np.arange(data.shape[0])
+    maxind = np.argmax(data)
+    com = int(np.sum(data.astype(float)*inds)/np.sum(data))
+    return bool(abs(com-maxind)>(data.shape[0]>>3))
+
+def getSplit(data):
+    index = data.shape[0]-(data.shape[0]>>3)
+    csum = np.cumsum(data)
+    while csum[index]>(csum[-1]>>1):
+        index -= index>>3
+        #print(index)
+    return index
 
 class Vls:
     def __init__(self,thresh) -> None:
@@ -70,7 +85,7 @@ class Vls:
         if (np.max(vlswv)-mean)<self.vlsthresh:
             return False
         d = np.copy(vlswv-mean).astype(np.int16)
-        c,s = getcentroid(d[self.winstart:self.winstop],pct=0.8)
+        c,s = getCentroid(d[self.winstart:self.winstop],pct=0.8)
         if self.initState:
             self.v = [d]
             self.vsize = len(self.v)

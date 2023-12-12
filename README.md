@@ -4,6 +4,15 @@ We see the different spectra for each of the ports.  This is for the quantized c
 We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon enerrgy.
 ![plot](./figures/multiretardationNNO_calibpoints.png)
 
+#Running on S3DF
+The first line only if interfacing with .xtc files
+```bash
+source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
+conda deactivate
+conda activate h5-1.0.1
+```
+
+
 #Obfuscation
 ![plot](./figures/qbinsRecovered.png)  
 ![plot](./figures/qbinsSnow_ports_12_0.png)  
