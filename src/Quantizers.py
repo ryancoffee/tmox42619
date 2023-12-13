@@ -8,6 +8,7 @@ import math
 from utils import fitpoly,fitcurve,fitval
 import matplotlib.pyplot as plt
 from typing import List
+from sklean.cluster import KMeans
 
 plotting = False
 
@@ -25,7 +26,7 @@ class Quantizer:
             ubins = np.arange(np.min(data),np.max(data)+1)
             h = np.histogram(data,bins=ubins)[0]
             csum = np.cumsum( h.astype(float) )
-            yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
+            yb = np.arange(0,csum[-1],step=float(csum[-1])/(self.nbins+1))
             self.qbins = np.interp(yb,csum,(ubins[:-1]+ubins[1:])/2.)
 
         elif self.style == 'santafe':
@@ -56,13 +57,13 @@ class Quantizer:
                 plt.title('power = %.3f'%theta[1])
                 plt.show()
             csum = np.cumsum(distro)
-            yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
+            yb = np.arange(0,csum[-1],step=float(csum[-1])/(self.nbins+1))
             self.qbins = np.interp(yb,csum,B)
 
         elif self.style == 'uniform':
             mx = np.max(data)+1
             mn = np.min(data)
-            self.qbins = np.arange(mn,mx,step=np.float(mx - mn)/np.float(self.nbins+1))
+            self.qbins = np.arange(mn,mx,step=float(mx - mn)/float(self.nbins+1))
 
         elif self.style == 'wave':
             if self.wave:
@@ -72,7 +73,7 @@ class Quantizer:
                 #plt.plot(wave)
                 #plt.show()
                 csum = np.cumsum(wave)
-                yb = np.arange(0,csum[-1],step=np.float(csum[-1])/(self.nbins+1))
+                yb = np.arange(0,csum[-1],step=float(csum[-1])/(self.nbins+1))
                 self.qbins = np.interp(yb,csum,np.arange(csum.shape[0]))
             else:
                 print('attempting to use waveform version of quantizer on non wave style.')
@@ -122,6 +123,34 @@ class Quantizer:
 
     def getstyle(self):
         return self.style
+
+    @classmethod
+    def aggregateBatchesH5(cls,fname,klist,qdict): # based on KMeans, but probably this would be best done with using the cumulative sum as an integer implementation.
+        with h5py.File(fname,'a') as f:
+            for k in klist:
+                qmeans = qdict[k][b]
+                bkeys = [b for b in qdict[k].keys() if not re.search('agr',b)]
+                d = np.array((len(qdict[k][bkeys[0]]),len(bkeys)))
+                for i,b in enumerate(bkeys):
+                    d[:,i] = qdict[k][b].qbins
+                qmeans = np.mean(d,axis=1)
+                kmeans = KMeans(n_clusters=qdict[k][bkeys[0]].nbins,init=qmeans.reshape(-1,1))
+                res = kmeans.fit(d.reshape(-1,1)).cluster_centers_.reshape(-1)
+                ds = f[k].create_dataset('agr',data=res)
+                ds.attrs.create('nbins',qdict[k][b].nbins,dtype=np.uint32)
+                ds.attrs.create('style',qdict[k][b].style)
+        return
+
+    @classmethod
+    def saveBatchesH5(cls,fname,klist,qdict):
+        with h5py.File(fname,'w') as f:
+            for k in klist:
+                grp = f.create_group(k)
+                for b in qdict[k].keys():
+                    ds = grp.create_dataset('qbins_%s'%b,data=qdict[k][b].qbins,dtype=float)
+                    ds.attrs.create('nbins',qdict[k][b].nbins,dtype=np.uint32)
+                    ds.attrs.create('style',qdict[k][b].style)
+        return 
 
     @classmethod
     def saveH5(cls,fname,klist,qdict):
