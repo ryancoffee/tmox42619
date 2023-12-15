@@ -8,7 +8,7 @@ import math
 from utils import fitpoly,fitcurve,fitval
 import matplotlib.pyplot as plt
 from typing import List
-from sklean.cluster import KMeans
+from sklearn.cluster import KMeans
 
 plotting = False
 
@@ -125,18 +125,35 @@ class Quantizer:
         return self.style
 
     @classmethod
-    def aggregateBatchesH5(cls,fname,klist,qdict): # based on KMeans, but probably this would be best done with using the cumulative sum as an integer implementation.
+    def aggregateBatchesH5(cls,fname,klist,qdict,agrtype='kmeans'): # based on KMeans, but probably this would be best done with using the cumulative sum as an integer implementation.
         with h5py.File(fname,'a') as f:
             for k in klist:
-                qmeans = qdict[k][b]
                 bkeys = [b for b in qdict[k].keys() if not re.search('agr',b)]
-                d = np.array((len(qdict[k][bkeys[0]]),len(bkeys)))
+                nbins = qdict[k][bkeys[0]].nbins+1
+                d = np.zeros((nbins,len(bkeys)),dtype=float)
+                res = np.zeros((nbins,),dtype=float)
                 for i,b in enumerate(bkeys):
                     d[:,i] = qdict[k][b].qbins
-                qmeans = np.mean(d,axis=1)
-                kmeans = KMeans(n_clusters=qdict[k][bkeys[0]].nbins,init=qmeans.reshape(-1,1))
-                res = kmeans.fit(d.reshape(-1,1)).cluster_centers_.reshape(-1)
-                ds = f[k].create_dataset('agr',data=res)
+                if agrtype=='kmeans':
+                    qmeans = np.mean(d,axis=1)
+                    kmeans = KMeans(n_clusters=nbins,init=qmeans.reshape(-1,1),n_init='auto')
+                    res = kmeans.fit(d.reshape(-1,1)).cluster_centers_.reshape(-1)
+                    dsname = 'agr_kmeans'
+                else: # do the quick method with cumsum
+                    inds = d.reshape(-1).astype(int)
+                    minind = np.min(inds)
+                    inds -= minind
+                    h = np.zeros((np.max(inds)+1,),dtype=int)
+                    for i in inds:
+                        h[i] += 1
+                    c = np.cumsum(h)
+                    v = np.arange(len(c))
+                    #y = np.zeros((nbins),dtype=float)
+                    y = np.arange(len(bkeys)//2,(nbins*len(bkeys)+len(bkeys)//2),len(bkeys))
+                    res = np.interp(y,c,v) + minind
+                    dsname = 'agr_quick'
+
+                ds = f[k].create_dataset(dsname,data=res)
                 ds.attrs.create('nbins',qdict[k][b].nbins,dtype=np.uint32)
                 ds.attrs.create('style',qdict[k][b].style)
         return
