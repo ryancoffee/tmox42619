@@ -52,9 +52,9 @@ def main():
         print(qfname)
         Quantizer.saveBatchesH5(qfname,portkeys,quants)
         now = time.time_ns()
-        Quantizer.aggregateBatchesH5(qfname,portkeys,quants,agrtype='kmeans') # agrtype can be 'quick' or 'kmeans'
-        print('Aggregation kmeans in %i ms'%((time.time_ns()-now)//1000000))
-        now = time.time_ns()
+        #Quantizer.aggregateBatchesH5(qfname,portkeys,quants,agrtype='kmeans') # agrtype can be 'quick' or 'kmeans'
+        #print('Aggregation kmeans in %i ms'%((time.time_ns()-now)//1000000))
+        #now = time.time_ns()
         Quantizer.aggregateBatchesH5(qfname,portkeys,quants,agrtype='quick') # agrtype can be 'quick' or 'kmeans'
         print('Aggregation quick in %i ms'%((time.time_ns()-now)//1000000))
 
