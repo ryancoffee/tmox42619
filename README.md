@@ -10,7 +10,9 @@ The first line only if interfacing with .xtc files
 source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
 conda deactivate
 conda activate h5-1.0.1
+python3 ./src/batchQuantizeHits.py 16 128 /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_multiretardation/h5files/hits.tmox42619.run_132.h5
 ```
+e.g. that gives 16 batches each using 128 bins for the tof dimension.
 
 
 #Obfuscation
