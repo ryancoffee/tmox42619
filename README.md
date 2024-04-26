@@ -5,7 +5,7 @@ We take as the calibration points the rough position of the features along with 
 ![plot](./figures/multiretardationNNO_calibpoints.png)
 
 #Running on S3DF
-The first line only if interfacing with .xtc files
+The first line only if interfacing with .xtc files, as if when running src/set\_configs.py and src/hits2h5.py  
 ```bash
 source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
 conda deactivate
@@ -14,6 +14,17 @@ python3 ./src/batchQuantizeHits.py 16 128 /sdf/data/lcls/ds/tmo/tmox42619/scratc
 ```
 e.g. that gives 16 batches each using 128 bins for the tof dimension.
 
+In case you are running all over from scratch the hits2h5, this is likely a good script-ish thing to do:   
+Be sure the create the 'h5files' in the scratch subdirectory.  
+```bash
+export scratchpath=/sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_debug/h5files
+export datapath=/sdf/data/lcls/ds/tmo/tmox42619/xtc
+export expname=tmox42619
+export runnum=132
+export nshots=100
+python3 ./src/set_configs.py ${scratchpath}/${expname}.hsdconfig.h5
+python3 ./src/hits2h5.py ${nshots} ${expname} ${runnum}
+```
 
 #Obfuscation
 ![plot](./figures/qbinsRecovered.png)  

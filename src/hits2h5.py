@@ -1,4 +1,4 @@
-#!/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/bin/python3
+#!/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps-4.6.3/bin/python3
 
 
 import psana
@@ -7,6 +7,7 @@ import sys
 import re
 import h5py
 from scipy.fftpack import dct,dst
+import os
 
 from Ports import *
 from Ebeam import *
@@ -67,7 +68,9 @@ def main():
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files'
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier_1000vlsthresh/h5files'
     #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_santafe/h5files'
-    scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_multiretardation/h5files'
+    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_multiretardation/h5files'
+
+    scratchdir = os.getenv('scratchpath')
 
     if len(sys.argv)<3:
         print('syntax: ./hits2h5.py <nshots> <expname> <list of run numbers>')

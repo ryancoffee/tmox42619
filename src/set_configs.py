@@ -1,4 +1,4 @@
-#!/cds/sw/ds/ana/conda2/inst/envs/ps-4.2.5/bin/python3
+#!/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps-4.6.3/bin/python3
 import h5py
 import numpy as np
 import sys
