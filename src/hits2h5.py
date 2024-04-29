@@ -17,6 +17,8 @@ from utils import *
 
 
 def fillconfigs(cfgname):
+    print(cfgname)
+    print('%s/%s.%s'%(os.getenv('scratchpath'),os.getenv('expname'),'hsdconfigs.h5'))
     params = {'chans':{},'t0s':{},'logicthresh':{}}
     with h5py.File(cfgname,'r') as f:
         params['inflate'] = f.attrs['inflate']
@@ -63,25 +65,26 @@ def main():
         ############################################
         ###### Change this to your output dir ######
         ############################################
-    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output/h5files'
-    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_2022/h5files'
-    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier/h5files'
-    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_vernier_1000vlsthresh/h5files'
-    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_santafe/h5files'
-    #scratchdir = '/reg/data/ana16/tmo/tmox42619/scratch/ryan_output_multiretardation/h5files'
 
     scratchdir = os.getenv('scratchpath')
+    expname = os.getenv('expname')
+    nshots = int(os.getenv('nshots'))
+    
 
-    if len(sys.argv)<3:
-        print('syntax: ./hits2h5.py <nshots> <expname> <list of run numbers>')
+    if len(sys.argv)<2:
+        print('export scratchpath=<apth to file/h5files')
+        print('export expname=tmox42619')
+        print('export nshots=100')
+        print('export configfile=<path/to/config.h5>')
+        print('syntax: ./hits2h5.py <list of run numbers>')
         return
-    expname = sys.argv[2]
-    nshots = int(sys.argv[1])
-    runnums = [int(run) for run in sys.argv[3:]]
+    runnums = [int(run) for run in sys.argv[1:]]
+    _ = [print('runnum %i'%int(r)) for r in runnums ]
     outnames = ['%s/hits.%s.run_%03i.h5'%(scratchdir,expname,r) for r in runnums]
 
     _=[print('starting analysis exp %s for run %i'%(expname,int(r))) for r in runnums]
-    cfgname = '%s/%s.configs.h5'%(scratchdir,expname)
+    #cfgname = '%s/%s.hsdconfigs.h5'%(scratchdir,expname)
+    cfgname = os.getenv('configfile')
     params = fillconfigs(cfgname)
     chans = params['chans']
     t0s = params['t0s']
