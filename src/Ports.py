@@ -14,6 +14,31 @@ def cfdLogic(s,invfrac=1<<2,offset=10):
     result[:-offset] = (1<<invfrac)*s[offset:]-s[:-offset]
     return result
 
+def fftLogic_f16(s,inflate=1,nrolloff=128):
+    sz = s.shape[0]
+    result = np.zeros(sz*inflate,dtype=np.int16)
+    rolloff_vec = (1<<3)*(1.+np.cos(np.arange(nrolloff<<1,dtype=float)*2*np.pi/float(nrolloff))) # careful, operating on left and right of middle indices in one go...2pi now not pi.
+    smirror = np.append(s,np.flip(s,axis=0)).astype(np.int16)
+    S = fft(smirror,axis=0)
+    SR = np.copy(S.real).astype(np.int16)
+    SI = np.copy(S.imag).astype(np.int16)
+    SR[sz-nrolloff:sz+nrolloff] *= rolloff_vec.astype(np.int16)
+    SI[sz-nrolloff:sz+nrolloff] *= rolloff_vec.astype(np.int16)
+    SR[:sz-nrolloff] <<= 4
+    SR[sz+nrolloff:] <<= 4
+    SI[:sz-nrolloff] <<= 4
+    SI[sz+nrolloff:] <<= 4
+    S = SR + 1j*SI
+    if inflate>1:
+        S = np.concatenate((S[:sz],np.zeros(2*sz*(inflate-1),dtype=complex),S[sz:]))
+    Sy = np.copy(S)*sz
+    S[:sz] *= 1j*np.arange(sz,dtype=np.float16)/(sz)
+    S[-sz:] *= np.flip(-1j*np.arange(sz,dtype=np.float16)/(sz),axis=0)
+    y = ifft(Sy,axis=0).real[:(inflate*sz)].astype(np.int16)
+    dy = ifft(S,axis=0).real[:(inflate*sz)].astype(np.int16)
+    return -((y>>4)*(dy>>4)).astype(np.int16)
+
+
 def fftLogic(s,inflate=1,nrolloff=128):
     sz = s.shape[0]
     result = np.zeros(sz*inflate,dtype=np.int32)
@@ -141,7 +166,7 @@ class Port:
             for k in port[key].waves.keys():
                 rawgrp.create_dataset(k,data=port[key].raw[k].astype(np.uint16),dtype=np.uint16)
                 wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
-                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int16),dtype=np.int16)
+                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int32),dtype=np.int32)
             g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
             g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
             g.attrs.create('t0',data=port[key].t0,dtype=float)
@@ -158,22 +183,26 @@ class Port:
         self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         return self
 
-    def addsample(self,w,l):
+    def addsample(self,o,w,l):
         eventnum = len(self.addresses)
         if eventnum<100:
             if eventnum%10<10: 
+                self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         elif eventnum<1000:
             if eventnum%100<10: 
+                self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         elif eventnum<10000:
             if eventnum%1000<10: 
+                self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         else:
             if eventnum%10000<10: 
+                self.raw.update( {'shot_%i'%eventnum:np.copy(o)} )
                 self.waves.update( {'shot_%i'%eventnum:np.copy(w)} )
                 self.logics.update( {'shot_%i'%eventnum:np.copy(l)} )
         return self
@@ -195,9 +224,9 @@ class Port:
             x0 = float(stop) - float(d[stop])/float(d[stop]-d[stop-1])
             i += 1
             v = float(self.expand)*float(x0)
-            tofs += [np.uint64(randomround(v,self.rng))] 
+            tofs += [np.uint32(randomround(v,self.rng))] 
             slopes += [d[stop]-d[stop-1]] 
-        return tofs,slopes,np.uint32(len(tofs))
+        return tofs,slopes,np.uint64(len(tofs))
 
     def scanedges(self,d):
         tofs = []
@@ -235,97 +264,31 @@ class Port:
             slopes += [float((theta[1]+x0*theta[2])/2**18)] ## scaling to reign in the obscene derivatives... probably shoul;d be scaling d here instead
         return tofs,slopes,np.uint32(len(tofs))
 
-    def process_list(self,ss,max_len):
-        e = []
-        de = []
-        ne = 0
-        if type(ss[0]) == type(None):
-            e = []
-            de = []
-            ne = 0
-        else:
-            for s in ss:
-                for adc in range(self.nadcs):
-                    b = np.mean(s[adc:self.baselim+adc:self.nadcs])
-                    s[adc::self.nadcs] = (s[adc::self.nadcs]) - int(b)
-                logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff)
-                edene = self.scanedges_simple(logic)
-                if edene[2]>0:
-                    e += edene[0]
-                    de += edene[1]
-                    ne += edene[2]
-
-        if self.initState:
-            self.sz = ss[0].shape[0]*self.inflate*self.expand
-            self.tofs = [0]
-            if ne<1:
-                self.addresses = [np.uint64(0)]
-                self.nedges = [np.uint32(0)]
-            else:
-                self.addresses = [np.uint64(1)]
-                self.nedges = [np.uint32(ne)]
-                self.tofs += e
-                self.slopes += de
-        else:
-            if ne<1:
-                self.addresses += [np.uint64(0)]
-                self.nedges += [np.uint32(0)]
-            else:
-                self.addresses += [np.uint64(len(self.tofs))]
-                self.nedges += [np.uint32(ne)]
-                self.tofs += e
-                self.slopes += de
-        return True
-
-    def processChristos(self,s):
-        e:List[np.int32] = []
-        de = []
-        ne = 0
+    def test(self,s):
         if type(s) == type(None):
-            self.addeverysample(np.zeros((2,),np.uint16),np.zeros((2,),np.int16),np.zeros((2,),np.float16))
-            e:List[np.int32] = []
-            de = []
-            ne = 0
-        else:
-            s_orig = np.copy(s)
-            for adc in range(self.nadcs):
-                b = np.mean(s[adc:self.baselim+adc:self.nadcs])
-                s[adc::self.nadcs] = (s[adc::self.nadcs] ) - np.int32(b)
-            logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
-            e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
-            self.addeverysample(s_orig,s,logic)
-
-        if self.initState:
-            self.sz = s.shape[0]*self.inflate*self.expand
-            self.addresses = [np.uint64(0)]
-            self.nedges = [np.uint64(ne)]
-            if ne>0:
-                self.tofs += e
-                self.slopes += de
-        else:
-            self.addresses += [np.uint64(len(self.tofs))]
-            self.nedges += [np.uint64(ne)]
-            if ne>0:
-                self.tofs += e
-                self.slopes += de
+            return False
         return True
 
     def process(self,s):
         e:List[np.int32] = []
         de = []
         ne = 0
+        r = []
         if type(s) == type(None):
-            self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
+            #self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
             e:List[np.int32] = []
             de = []
             ne = 0
+            return False
         else:
-            for adc in range(self.nadcs):
+            if len(self.addresses)%100==0:
+                r = np.copy(s).astype(np.uint16)
+            for adc in range(self.nadcs): # correcting systematic baseline differences for the four ADCs.
                 b = np.mean(s[adc:self.baselim+adc:self.nadcs])
                 s[adc::self.nadcs] = (s[adc::self.nadcs] ) - np.int32(b)
-            logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
+            #logic = fftLogic(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
+            logic = fftLogic_f16(s,inflate=self.inflate,nrolloff=self.nrolloff) #produce the "logic vector"
             e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
-            self.addsample(s,logic)
 
         if self.initState:
             self.sz = s.shape[0]*self.inflate*self.expand
@@ -340,6 +303,8 @@ class Port:
             if ne>0:
                 self.tofs += e
                 self.slopes += de
+        if len(self.addresses)%100==0:
+            self.addsample(r,s,logic)
         return True
 
     def set_initState(self,state=True):
