@@ -2,7 +2,7 @@
 In case you are running all over from scratch the hits2h5, this is likely a good script-ish thing to do:   
 Be sure the create the 'h5files' in the scratch subdirectory.  
 ```bash
-source /sdf/group/lcls/ds/ana/sw/conda3/manage/bin/psconda.sh
+source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
 export scratchpath=/sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_debug/h5files
 export datapath=/sdf/data/lcls/ds/tmo/tmox42619/xtc
 export expname=tmox42619
