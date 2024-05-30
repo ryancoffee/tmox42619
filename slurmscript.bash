@@ -4,8 +4,8 @@
 #SBATCH --partition=roma
 #
 #SBATCH --job-name=hits2h5_min
-#SBATCH --output=output-%j.txt
-#SBATCH --error=output-%j.txt
+#SBATCH --output=../output-%j.stdout
+#SBATCH --error=../output-%j.errout
 #
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
