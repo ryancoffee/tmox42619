@@ -1,3 +1,9 @@
+# Plan for SUMMIT+  
+Run ```fex2h5_minimal.py``` locally in the DRP and send the resulting .h5 files to OLCF.  
+Update the quantization vector (serially).  
+Reply with the updated quantization vector.  
+Refresh plotted histograms based on new quant vecs.  
+
 #Running on S3DF  
 In case you are running all over from scratch the hits2h5, this is likely a good script-ish thing to do:   
 Be sure the create the 'h5files' in the scratch subdirectory.  

@@ -8,6 +8,17 @@ class Ebeam:
         return 
 
     @classmethod
+    def slim_update_h5(cls,f,ebunch,ebeamEvents):
+        grpebeam = None
+        if 'ebeam' in f.keys():
+            grpebeam = f['ebeam']
+        else:
+            grpebeam = f.create_group('ebeam')
+        d = grpebeam.create_dataset('l3energy',data=ebunch.l3,dtype=np.float16)
+        d.attrs.create('l3offset',ebunch.l3offset,dtype=np.uint16)
+        return
+
+    @classmethod
     def update_h5(cls,f,ebunch,ebeamEvents):
         grpebeam = None
         if 'ebeam' in f.keys():

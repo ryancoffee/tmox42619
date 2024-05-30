@@ -146,6 +146,27 @@ class Port:
         self.shot = int(0)
 
     @classmethod
+    def slim_update_h5(cls,f,port,hsdEvents,chans):
+        for key in chans.keys(): # remember key == port number
+            g = None
+            if 'port_%i'%(key) in f.keys():
+                g = f['port_%i'%(key)]
+            else:
+                g = f.create_group('port_%i'%(key))
+            g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint64) 
+            g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
+            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
+            g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint64)
+            g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
+            g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
+            g.attrs.create('t0',data=port[key].t0,dtype=float)
+            g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
+            g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
+            g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
+            g.create_dataset('events',data=hsdEvents)
+        return 
+
+    @classmethod
     def update_h5(cls,f,port,hsdEvents,chans):
         for key in chans.keys(): # remember key == port number
             g = None
