@@ -5,6 +5,12 @@ Reply with the updated quantization vector.
 Refresh plotted histograms based on new quant vecs.  
 
 #Running on S3DF  
+OK, moved the below into ```runscript.bash``` in which the nshots is set to 100000.  
+The new command to run a sequence of shots is e.g.  
+```bash
+./runscript.bash $(seq 308 316)
+```  
+
 In case you are running all over from scratch the hits2h5, this is likely a good script-ish thing to do:   
 Be sure the create the 'h5files' in the scratch subdirectory.  
 ```bash
