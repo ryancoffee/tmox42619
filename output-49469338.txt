@@ -1,0 +1,35 @@
+runnum 192
+starting analysis exp tmox42619 for run 192
+/sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/tmox42619.hsdconfig.h5
+/sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/tmox42619.hsdconfigs.h5
+{'ebeam', 'gmd', 'xtcav', 'pcav', 'tmo_fim1', 'hsd', 'timing', 'tmo_fim0', 'tmo_opal1', 'andor', 'xgmd', 'epicsinfo'}
+processing run 192
+chans:  {0: 3, 1: 9, 12: 5, 13: 6, 14: 8, 15: 2, 16: 13, 2: 11, 4: 10, 5: 12}
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+Damnit, Vls!
+Damnit, Vls!
+writing to /sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_slurm/h5files/hits.tmox42619.run_192.h5
+Finished with run 192
+Hello, I'm done now!

@@ -5,11 +5,19 @@ Reply with the updated quantization vector.
 Refresh plotted histograms based on new quant vecs.  
 
 #Running on S3DF  
-OK, moved the below into ```runscript.bash``` in which the nshots is set to 100000.  
+OK, moved the below into ```runscript.bash``` and then calling it within slurmscript.bash.   
+In that nshots is hard set to 100000.  
 The new command to run a sequence of shots is e.g.  
 ```bash
 ./runscript.bash $(seq 308 316)
 ```  
+which works, but only sequentially running, not in parallel.  
+
+If using the batchqueue with the ```slurmscript.bash```  
+```bash
+for r in $(seq 190 1 210); do sbatch slurmscript.bash $r; done
+```  
+This is set for preemtible and rome nodes in b50.  
 
 In case you are running all over from scratch the hits2h5, this is likely a good script-ish thing to do:   
 Be sure the create the 'h5files' in the scratch subdirectory.  

@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/sdf/home/c/coffee/tmox42619/./src/set_configs.py", line 46, in <module>
+    main()
+  File "/sdf/home/c/coffee/tmox42619/./src/set_configs.py", line 31, in main
+    with h5py.File(cfgfile,'w') as f:
+  File "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps-4.6.3/lib/python3.9/site-packages/h5py/_hl/files.py", line 567, in __init__
+    fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)
+  File "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps-4.6.3/lib/python3.9/site-packages/h5py/_hl/files.py", line 237, in make_fid
+    fid = h5f.create(name, h5f.ACC_TRUNC, fapl=fapl, fcpl=fcpl)
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5f.pyx", line 126, in h5py.h5f.create
+OSError: Unable to create file (bad object header version number)
+/sdf/home/c/coffee/tmox42619/src/Ports.py:245: RuntimeWarning: overflow encountered in scalar subtract
+  x0 = float(stop) - float(d[stop])/float(d[stop]-d[stop-1])
+/sdf/home/c/coffee/tmox42619/src/Ports.py:249: RuntimeWarning: overflow encountered in scalar subtract
+  slopes += [d[stop]-d[stop-1]]
