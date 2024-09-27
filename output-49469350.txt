@@ -1,4 +1,0 @@
-/sdf/home/c/coffee/tmox42619/src/Ports.py:245: RuntimeWarning: overflow encountered in scalar subtract
-  x0 = float(stop) - float(d[stop])/float(d[stop]-d[stop-1])
-/sdf/home/c/coffee/tmox42619/src/Ports.py:249: RuntimeWarning: overflow encountered in scalar subtract
-  slopes += [d[stop]-d[stop-1]]
