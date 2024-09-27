@@ -4,6 +4,14 @@ Update the quantization vector (serially).
 Reply with the updated quantization vector.  
 Refresh plotted histograms based on new quant vecs.  
 
+Add to the plan, for current mode, use old data to start projecting onto eigen-functions from FEX-like thresholded signals.  
+Focus on the high intensity runs at the end of the beamtime.  
+Also start to do a fully connected feed forward estimator for the peak centroids trained on the eigen coeffecients, versus training on the raw FEX snippets.  
+
+Also, see if the compensation of the ADCs is really an issue or if that is truly only extraneous if we train the eigen functions appropriately.  
+
+
+
 #Running on S3DF  
 ## parallel execution
 If using the batchqueue with the ```slurmscript.bash```  
