@@ -2,3 +2,4 @@ data_fs
 batchruns/slurm-*.out
 slurm-*.out
 __pycache__
+*.pyc
