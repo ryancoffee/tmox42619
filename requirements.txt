@@ -1,0 +1,5 @@
+pyyaml
+pydantic
+typer
+tqdm
+git+https://github.com/frobnitzem/stream.py@v1.0

@@ -146,7 +146,7 @@ class Port:
         self.shot = int(0)
 
     @classmethod
-    def update_h5(cls,f,port,hsdEvents,chans):
+    def update_h5(cls,f,ports,hsdEvents,chans):
         for key in chans.keys(): # remember key == port number
             g = None
             if 'port_%i'%(key) in f.keys():
@@ -159,20 +159,21 @@ class Port:
                 rawgrp = g.create_group('raw')
                 wvgrp = g.create_group('waves')
                 lggrp = g.create_group('logics')
-            g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint64) 
-            g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
-            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
-            g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint64)
-            for k in port[key].waves.keys():
-                rawgrp.create_dataset(k,data=port[key].raw[k].astype(np.uint16),dtype=np.uint16)
-                wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
-                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int32),dtype=np.int32)
-            g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
-            g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
-            g.attrs.create('t0',data=port[key].t0,dtype=float)
-            g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
-            g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-            g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
+            port = ports[key]
+            g.create_dataset('tofs',data=port.tofs,dtype=np.uint64) 
+            g.create_dataset('slopes',data=port.slopes,dtype=np.int64) 
+            g.create_dataset('addresses',data=port.addresses,dtype=np.uint64)
+            g.create_dataset('nedges',data=port.nedges,dtype=np.uint64)
+            for k in port.waves.keys():
+                rawgrp.create_dataset(k,data=port.raw[k].astype(np.uint16),dtype=np.uint16)
+                wvgrp.create_dataset(k,data=port.waves[k].astype(np.int16),dtype=np.int16)
+                lggrp.create_dataset(k,data=port.logics[k].astype(np.int32),dtype=np.int32)
+            g.attrs.create('inflate',data=port.inflate,dtype=np.uint8)
+            g.attrs.create('expand',data=port.expand,dtype=np.uint8)
+            g.attrs.create('t0',data=port.t0,dtype=float)
+            g.attrs.create('logicthresh',data=port.logicthresh,dtype=np.int32)
+            g.attrs.create('hsd',data=port.hsd,dtype=np.uint8)
+            g.attrs.create('size',data=port.sz*port.inflate,dtype=np.uint64) ### need to also multiply by expand #### TODO HERE HERE HERE HERE
             g.create_dataset('events',data=hsdEvents)
         return 
 
@@ -265,16 +266,14 @@ class Port:
         return tofs,slopes,np.uint32(len(tofs))
 
     def test(self,s):
-        if type(s) == type(None):
-            return False
-        return True
+        return s is not None
 
     def process(self,s):
         e:List[np.int32] = []
         de = []
         ne = 0
         r = []
-        if type(s) == type(None):
+        if s is None:
             #self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
             e:List[np.int32] = []
             de = []

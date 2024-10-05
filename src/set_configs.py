@@ -2,6 +2,10 @@
 import h5py
 import numpy as np
 import sys
+from pathlib import Path
+
+from config import Config
+import yaml
 
 def main():
     chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13} # HSD to port number:hsd
@@ -26,9 +30,24 @@ def main():
     if len(sys.argv)<2:
         print('I need an output filename to write configs to')
         return
+    cfg = Config(
+            chans=chans,
+            t0s=t0s,
+            logicthresh=logicthresh,
+            vlsthresh=vlsthresh,
+            vlswin=vlswin,
+            l3offset=l3offset,
+            inflate = 2,
+            expand = 4,
+          )
 
-    cfgfile = sys.argv[1]
-    with h5py.File(cfgfile,'w') as f:
+    cfgfile = Path(sys.argv[1])
+    cfgfile.parent.mkdir(mode=0o750, parents=True, exist_ok=True)
+    with open(cfgfile, "w", encoding="utf-8") as f:
+        yaml.dump(cfg.dict(), f, default_flow_style=False, indent=4, width=80)
+
+    """
+    with h5py.File(str(cfgfile), 'w') as f:
         f.attrs.create('expand',4) # expand controls the fractional resolution for scanedges by scaling index values and then zero crossing round to intermediate integers.
         f.attrs.create('inflate',2) # inflate pads the DCT(FFT) with zeros, artificially over sampling the waveform
         f.attrs.create('vlsthresh',data=vlsthresh)
@@ -40,7 +59,7 @@ def main():
             c.attrs.create('hsd',data=chans[k])
             c.attrs.create('t0',data=t0s[k])
             c.attrs.create('logicthresh',data=logicthresh[k])
-    return
+    """
 
 if __name__ == '__main__':
     main()

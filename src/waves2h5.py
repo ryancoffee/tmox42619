@@ -12,21 +12,7 @@ from Ports import *
 from Ebeam import *
 from Vls import *
 from utils import *
-
-
-def fillconfigs(cfgname):
-    params = {'chans':{},'t0s':{},'logicthresh':{}}
-    with h5py.File(cfgname,'r') as f:
-        params['inflate'] = f.attrs['inflate']
-        params['expand'] = f.attrs['expand']
-        for p in f.keys():
-            m = re.search('^\w+_(\d+)$',p)
-            if m:
-                k = int(m.group(1))
-                params['chans'][k] = f[p].attrs['hsd']
-                params['t0s'][k] = f[p].attrs['t0']
-                params['logicthresh'][k] = f[p].attrs['logicthresh']
-    return params
+from config import read_config
 
 def main():
         ############################################
@@ -44,16 +30,16 @@ def main():
 
     _=[print('starting analysis exp %s for run %i'%(expname,int(r))) for r in runnums]
     cfgname = '%s/%s.configs.h5'%(scratchdir,expname)
-    params = fillconfigs(cfgname)
-    chans = params['chans']
-    t0s = params['t0s']
-    logicthresh = params['logicthresh']
+    params = read_config(cfgname)
+    chans = params.chans
+    t0s = params.t0s
+    logicthresh = params.logicthresh
 
-    nr_expand = params['expand']
+    nr_expand = params.expand
 
 
     port = [{} for r in runnums] 
-    inflate = params['inflate']
+    inflate = params.inflate
 
     for r in range(len(runnums)):
         for key in chans.keys():

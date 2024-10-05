@@ -1,13 +1,28 @@
+# Installation and setup
+
+This package requires psana-2 to load xtc files.
+Since psana can be hard to install, activate a conda
+environment where it is already installed, then create
+a virtual env on-top of it using
+
+    python3 -m venv --system-site-packages venv
+    . ./venv/bin/activate
+
+Then install the dependencies using
+
+    pip install -r requirements.txt
+
 #Running on S3DF  
+
 In case you are running all over from scratch the hits2h5, this is likely a good script-ish thing to do:   
-Be sure the create the 'h5files' in the scratch subdirectory.  
+
 ```bash
-source /sdf/group/lcls/ds/ana/sw/conda3/manage/bin/psconda.sh
-export scratchpath=/sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_debug/h5files
+source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
+export scratchpath=/sdf/data/lcls/ds/tmo/tmox42619/scratch/${USER}_output_debug/h5files
 export datapath=/sdf/data/lcls/ds/tmo/tmox42619/xtc
 export expname=tmox42619
 export nshots=100
-export configfile=${scratchpath}/${expname}.hsdconfig.h5
+export configfile=${scratchpath}/${expname}.hsdconfig.yaml
 python3 ./src/set_configs.py ${configfile}
 python3 ./src/hits2h5.py <list of run numbers>
 ```
@@ -28,7 +43,7 @@ e.g. that gives 16 batches each using 128 bins for the tof dimension.
 # Multi-retardation
 ![plot](./figures/multiretardationNNO.png)
 We see the different spectra for each of the ports.  This is for the quantized combination of runs 131-133.  
-We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon enerrgy.
+We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon energy.
 ![plot](./figures/multiretardationNNO_calibpoints.png)
 
 # Recalibration for NNO
