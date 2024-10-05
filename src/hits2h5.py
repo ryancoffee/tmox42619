@@ -8,32 +8,14 @@ import re
 import h5py
 from scipy.fftpack import dct,dst
 import os
+from pathlib import Path
 
 from Ports import *
 from Ebeam import *
 from Vls import *
 from Gmd import *
 from utils import *
-
-
-def fillconfigs(cfgname):
-    print(cfgname)
-    print('%s/%s.%s'%(os.getenv('scratchpath'),os.getenv('expname'),'hsdconfigs.h5'))
-    params = {'chans':{},'t0s':{},'logicthresh':{}}
-    with h5py.File(cfgname,'r') as f:
-        params['inflate'] = f.attrs['inflate']
-        params['expand'] = f.attrs['expand']
-        params['vlsthresh'] = f.attrs['vlsthresh']
-        params['vlswin'] = f.attrs['vlswin']
-        params['l3offset'] = f.attrs['l3offset']
-        for p in f.keys():
-            m = re.search('^\w+_(\d+)$',p)
-            if m:
-                k = int(m.group(1))
-                params['chans'][k] = f[p].attrs['hsd']
-                params['t0s'][k] = f[p].attrs['t0']
-                params['logicthresh'][k] = f[p].attrs['logicthresh']
-    return params
+from config import Config, read_config
 
 def xtcav_crop(inimg,win=(256,256)):
     # hard coded factor of 2 scale down
@@ -75,7 +57,7 @@ def main():
         print('export scratchpath=<apth to file/h5files')
         print('export expname=tmox42619')
         print('export nshots=100')
-        print('export configfile=<path/to/config.h5>')
+        print('export configfile=<path/to/config.yaml>')
         print('syntax: ./hits2h5.py <list of run numbers>')
         return
     runnums = [int(run) for run in sys.argv[1:]]
@@ -85,22 +67,22 @@ def main():
     _=[print('starting analysis exp %s for run %i'%(expname,int(r))) for r in runnums]
     #cfgname = '%s/%s.hsdconfigs.h5'%(scratchdir,expname)
     cfgname = os.getenv('configfile')
-    params = fillconfigs(cfgname)
-    chans = params['chans']
-    t0s = params['t0s']
-    logicthresh = params['logicthresh']
+    params = read_config(cfgname)
+    chans = params.chans
+    t0s = params.t0s
+    logicthresh = params.logicthresh
 
-    nr_expand = params['expand']
+    nr_expand = params.expand
 
 
-    spect = [Vls(params['vlsthresh']) for r in runnums]
-    _ = [s.setwin(params['vlswin'][0],params['vlswin'][1]) for s in spect]
-    #_ = [s.setthresh(params['vlsthresh']) for s in spect]
+    spect = [Vls(params.vlsthresh) for r in runnums]
+    _ = [s.setwin(*params.vlswin) for s in spect]
+    #_ = [s.setthresh(params.vlsthresh) for s in spect]
     ebunch = [Ebeam() for r in runnums]
     gmd = [Gmd() for r in runnums]
-    _ = [e.setoffset(params['l3offset']) for e in ebunch]
+    _ = [e.setoffset(params.l3offset) for e in ebunch]
     port = [{} for r in runnums] 
-    inflate = params['inflate']
+    inflate = params.inflate
 
     for r in range(len(runnums)):
         for key in chans.keys():

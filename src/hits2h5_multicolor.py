@@ -15,21 +15,7 @@ from Vls import *
 from Gmd import *
 from utils import *
 
-
-def fillconfigs(cfgname):
-    params = {'chans':{},'t0s':{},'logicthresh':{}}
-    with h5py.File(cfgname,'r') as f:
-        params['inflate'] = f.attrs['inflate']
-        params['expand'] = f.attrs['expand']
-        for p in f.keys():
-            m = re.search('^\w+_(\d+)$',p)
-            if m:
-                k = int(m.group(1))
-                params['chans'][k] = f[p].attrs['hsd']
-                params['t0s'][k] = f[p].attrs['t0']
-                params['logicthresh'][k] = f[p].attrs['logicthresh']
-    return params
-
+from config import read_config
 
 def main():
         ############################################
@@ -50,18 +36,18 @@ def main():
     print('starting analysis exp %s for runs '%(expname))
     print(' '.join([str(r) for r in runnums]) )
     cfgname = '%s/%s.hsdconfig.h5'%(scratchdir,expname)
-    params = fillconfigs(cfgname)
-    chans = params['chans']
-    t0s = params['t0s']
-    logicthresh = params['logicthresh']
+    params = read_config(cfgname)
+    chans = params.chans
+    t0s = params.t0s
+    logicthresh = params.logicthresh
 
-    nr_expand = params['expand']
+    nr_expand = params.expand
 
     spect = Vls()
     ebunch = Ebeam()
     port = {} 
     scale = int(1) # to better fill 16 bit int
-    inflate = params['inflate']
+    inflate = params.inflate
     for key in logicthresh.keys():
         logicthresh[key] *= scale # inflating by factor of 4 since we are also scaling the waveforms by 4 in vertical to fill bit depth.
 
