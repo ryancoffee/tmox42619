@@ -1,11 +1,50 @@
-# Multi-retardation
-![plot](./figures/multiretardationNNO.png)
-We see the different spectra for each of the ports.  This is for the quantized combination of runs 131-133.  
-We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon enerrgy.
-![plot](./figures/multiretardationNNO_calibpoints.png)
+# Plan for SUMMIT+  
+Run ```fex2h5_minimal.py``` locally in the DRP and send the resulting .h5 files to OLCF.  
+Update the quantization vector (serially).  
+Reply with the updated quantization vector.  
+Refresh plotted histograms based on new quant vecs.  
 
-#Running on S3DF
-The first line only if interfacing with .xtc files
+Add to the plan, for current mode, use old data to start projecting onto eigen-functions from FEX-like thresholded signals.  
+Focus on the high intensity runs at the end of the beamtime.  
+Also start to do a fully connected feed forward estimator for the peak centroids trained on the eigen coeffecients, versus training on the raw FEX snippets.  
+
+Also, see if the compensation of the ADCs is really an issue or if that is truly only extraneous if we train the eigen functions appropriately.  
+
+
+
+#Running on S3DF  
+## parallel execution
+If using the batchqueue with the ```slurmscript.bash```  
+```bash
+for r in $(seq 190 1 210); do sbatch slurmscript.bash $r; done
+```  
+This is set for preemtible and rome nodes in b50.  
+
+## serial execution
+OK, moved the below into ```runscript.bash``` and then calling it within slurmscript.bash.   
+In that nshots is hard set to 100000.  
+The new command to run a sequence of shots is e.g.  
+```bash
+./runscript.bash $(seq 308 316)
+```  
+which works, but only sequentially running, not in parallel.  
+
+
+
+In case you are running all over from scratch the hits2h5, this is likely a good script-ish thing to do:   
+Be sure the create the 'h5files' in the scratch subdirectory.  
+```bash
+source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
+export scratchpath=/sdf/data/lcls/ds/tmo/tmox42619/scratch/ryan_output_debug/h5files
+export datapath=/sdf/data/lcls/ds/tmo/tmox42619/xtc
+export expname=tmox42619
+export nshots=100
+export configfile=${scratchpath}/${expname}.hsdconfig.h5
+python3 ./src/set_configs.py ${configfile}
+python3 ./src/hits2h5.py <list of run numbers>
+```
+
+#Working with already pre-processed h5 fileson s3df  
 ```bash
 source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
 conda deactivate
@@ -14,10 +53,15 @@ python3 ./src/batchQuantizeHits.py 16 128 /sdf/data/lcls/ds/tmo/tmox42619/scratc
 ```
 e.g. that gives 16 batches each using 128 bins for the tof dimension.
 
-
 #Obfuscation
 ![plot](./figures/qbinsRecovered.png)  
 ![plot](./figures/qbinsSnow_ports_12_0.png)  
+
+# Multi-retardation
+![plot](./figures/multiretardationNNO.png)
+We see the different spectra for each of the ports.  This is for the quantized combination of runs 131-133.  
+We take as the calibration points the rough position of the features along with the various expected energies given 600eV photon enerrgy.
+![plot](./figures/multiretardationNNO_calibpoints.png)
 
 # Recalibration for NNO
 Runs 132-134, using ```./src/Calib_Multiretardation.py``` we get the following fit values in ```E(i) = theta0 + theta1*i + theta2* i**2``` then prints output:

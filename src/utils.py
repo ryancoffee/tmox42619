@@ -3,6 +3,8 @@
 import numpy as np
 import h5py
 import math
+import os
+import re
 
 
 
@@ -102,3 +104,46 @@ def samples2ascii(ipath,fname,opath):
         _=[np.savetxt('%s/%s.waves.%s.dat'%(opath,fname,p),waves[p],fmt='%i') for p in waves.keys()]
     return
 
+def fillconfigs(cfgname):
+    print(cfgname)
+    print('%s/%s.%s'%(os.getenv('scratchpath'),os.getenv('expname'),'hsdconfigs.h5'))
+    params = {'chans':{},'t0s':{},'logicthresh':{}}
+    with h5py.File(cfgname,'r') as f:
+        params['inflate'] = f.attrs['inflate']
+        params['expand'] = f.attrs['expand']
+        params['vlsthresh'] = f.attrs['vlsthresh']
+        params['vlswin'] = f.attrs['vlswin']
+        params['l3offset'] = f.attrs['l3offset']
+        for p in f.keys():
+            m = re.search('^\w+_(\d+)$',p)
+            if m:
+                k = int(m.group(1))
+                params['chans'][k] = f[p].attrs['hsd']
+                params['t0s'][k] = f[p].attrs['t0']
+                params['logicthresh'][k] = f[p].attrs['logicthresh']
+    return params
+
+def xtcav_crop(inimg,win=(256,256)):
+    # hard coded factor of 2 scale down
+    xprof = np.mean(inimg,axis=0)
+    yprof = np.mean(inimg,axis=1)
+    y0 = np.argmax(xprof)
+    x0 = np.argmax(yprof)
+    resimg = (np.roll(inimg,(-x0+win[0]//2,-y0+win[1]//2),axis=(0,1)))[:win[0],:win[1]]
+    tmp= np.column_stack((resimg,np.flip(resimg,axis=1)))
+    outimg=np.row_stack((tmp,np.flip(tmp,axis=0)))
+    W = dct(dct(outimg,axis=1,type=2),axis=0,type=2)
+    xenv = np.zeros(W.shape[0])
+    yenv = np.zeros(W.shape[1])
+    xenv[:win[0]//2] = 0.5*(1+np.cos(np.arange(win[0]//2)*np.pi/(win[0]/2)))
+    yenv[:win[1]//2] = 0.5*(1+np.cos(np.arange(win[1]//2)*np.pi/(win[1]/2)))
+    for i in range(W.shape[1]//2):
+        W[:,i] *= xenv
+    for i in range(W.shape[0]//2):
+        W[i,:] *= yenv
+    W *= 4.0/np.product(W.shape)
+    out = dct( dct(W[:win[0]//2,:win[1]//2],type=3,axis=0),type=3,axis=1)[:win[0]//4,:win[1]//4]
+    return out,x0//2,y0//2
+    #return dct(dct(W,axis=2,type=3),axis=1,type=3),x0,y0
+    #print(x0,y0)
+    #return inimg[:win[0],:win[1]],x0,y0
