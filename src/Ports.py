@@ -117,6 +117,15 @@ def dctLogic(s,inflate=1,nrolloff=128):
     result = y*dy   # constructing the sig*deriv waveform 
     return result
 
+"""
+wv = hsd.raw.waveforms(evt)[1][0]
+wvx = np.arange(wv.shape[0])
+y = [hsd.raw.peaks(evt)[1][0][1][i] for i in range(len(hsd.raw.peaks(evt)[1][0][1]))]
+x = [np.arange(hsd.raw.peaks(evt)[1][0][0][i],hsd.raw.peaks(evt)[1][0][0][i]+len(hsd.raw.peaks(evt)[1][0][1][i])) for i in range(len(y))]
+plt.plot(wv)
+_=[plt.plot(x[i],y[i]) for i in range(len(y))]
+plt.show()
+"""
 
 class Port:
     # Note that t0s are aligned with 'prompt' in the digitizer logic signal
@@ -144,6 +153,8 @@ class Port:
         self.waves = {}
         self.logics = {}
         self.shot = int(0)
+        self.processAlgos = 'fex2hits' # add as method to set the Algo for either of 'fex2hits', 'fex2coeffs', or just 'wave'
+
 
     @classmethod
     def slim_update_h5(cls,f,port,hsdEvents,chans):
@@ -290,7 +301,35 @@ class Port:
             return False
         return True
 
-    def process(self,s):
+    def process(self,s,x=0):
+        if self.processAlgo =='fex2coeffs':
+            return process_vfex2coeffs(s,x)
+        elif self.processAlgo == 'fex2hits':
+            return process_fex2hits(s,x)
+        return process_wave(s,x=0)
+
+    def process_fex2coeffs(self,s,x):
+        print('HERE HERE HERE HERE')
+        return True
+
+    def process_fex2hits(self,s,x):
+        e:List[np.int32] = []
+        de = []
+        ne = 0
+        r = []
+        if type(s) == type(None):
+            #self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
+            print('HERE HERE HERE HERE')
+            e:List[np.int32] = []
+            de = []
+            ne = 0
+            return False
+        else:
+            print('NOT DONE HERE')
+
+        return True
+
+    def process_wave(self,s,x=0):
         e:List[np.int32] = []
         de = []
         ne = 0
