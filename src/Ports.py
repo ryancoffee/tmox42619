@@ -39,7 +39,28 @@ def fftLogic_f16(s,inflate=1,nrolloff=128):
     return -((y>>4)*(dy>>4)).astype(np.int16)
 
 
-def fftLogic(s,inflate=1,nrolloff=128):
+def fftLogic_fex(s,inflate=1,nrollon=8,nrolloff=32):
+    sz = s.shape[0]
+    result = np.zeros(sz*inflate,dtype=np.int32)
+    rollon_vec = 0.5*(1.-np.cos(np.arange(nrollon,dtype=float)*np.pi/float(nrollon))) 
+    rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff<<1,dtype=float)*np.pi/float(nrolloff))) # careful, operating on left and right of middle indices in one go...2pi now not pi.
+    smirror = np.append(s,np.flip(s,axis=0)).astype(float)
+    smirror[:nrollon] *= rollon_vec
+    smirror[-nrollon-1:] *= np.flip(rollon_vec,axis=0)
+    smirror[(sz>>1)-nrolloff:(sz>>1)+nrolloff] *= rolloff_vec
+    
+    S = fft(smirror,axis=0)
+    #S[sz-nrolloff:sz+nrolloff] *= rolloff_vec
+    if inflate>1:
+        S = np.concatenate((S[:sz],np.zeros(2*sz*(inflate-1),dtype=complex),S[sz:]))
+    Sy = np.copy(S)*sz
+    S[:sz] *= 1j*np.arange(sz,dtype=float)/(sz)
+    S[-sz:] *= np.flip(-1j*np.arange(sz,dtype=float)/(sz),axis=0)
+    y = ifft(Sy,axis=0).real[:(inflate*sz)]
+    dy = ifft(S,axis=0).real[:(inflate*sz)]
+    return -y*dy
+
+def fftLogic(s,inflate=1,nrollon=64,nrolloff=128):
     sz = s.shape[0]
     result = np.zeros(sz*inflate,dtype=np.int32)
     rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff<<1,dtype=float)*2*np.pi/float(nrolloff))) # careful, operating on left and right of middle indices in one go...2pi now not pi.
@@ -54,68 +75,6 @@ def fftLogic(s,inflate=1,nrolloff=128):
     y = ifft(Sy,axis=0).real[:(inflate*sz)]
     dy = ifft(S,axis=0).real[:(inflate*sz)]
     return -y*dy
-
-def dctLogicInt(s,inflate=1,nrolloff=128):
-    '''
-    Cutting off the tail of the y before back transforming and multiplying
-    This is to reduce distortion of the dy signal when suplressing noise by multiplying by signal.
-    '''
-    sz = s.shape[0]
-    result = np.zeros(sz*inflate,dtype=np.int32)
-    ampscale = 1<<8
-    rolloff_vec = ((ampscale>>1)*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))).astype(np.int64)
-    sc = np.append(s,np.flip(s,axis=0)).astype(np.int32)
-    ss = np.append(s,np.flip(-1*s,axis=0)).astype(np.int32)
-    wc = dct(sc,type=2,axis=0).astype(np.int64)
-    ws = dst(ss,type=2,axis=0).astype(np.int64)
-    wc[-nrolloff:] *= rolloff_vec
-    ws[-nrolloff:] *= rolloff_vec
-    wc[:-nrolloff] *= ampscale # scaling since we are keeping to int32
-    ws[:-nrolloff] *= ampscale
-    wy = np.copy(wc)
-    if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
-        wc = np.append(wc,np.zeros((inflate-1)*wc.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
-        ws = np.append(ws,np.zeros((inflate-1)*ws.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
-        wy = np.append(wy,np.zeros((inflate-1)*wy.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
-    wc[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
-    ws[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
-    dsc = (dst(wc,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int64)
-    dcs = (dct(ws,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int64)
-    dy = (dcs-dsc)
-    y = (dct(wy,type=3,axis=0)[:inflate*sz]//(4*sz)).astype(np.int64)
-    result = dy*tanhInt(-y,bits=8)   # constructing the logic waveform 
-    return result
-
-def dctLogic(s,inflate=1,nrolloff=128):
-    result = np.zeros(s.shape,dtype=np.float32)
-    if nrolloff>winsz:
-        print('rolloff larger than windowed signal vec')
-        return result
-    if nrolloff!=0:
-        print('rolloff is non-zero... dont bother with that')
-        return result
-    
-    rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))
-    sz_roll = rolloff_vec.shape[0] 
-    sz = s.shape[0]
-    Yc = dct(np.append(s,np.flip(s,axis=0)),type=2)
-    Ys = dst(np.append(s,np.flip(s,axis=0)),type=2)
-    Yc[-sz_roll:] *= rolloff_vec
-    Ys[-sz_roll:] *= rolloff_vec
-    if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
-        Yc = np.append(Yc,np.zeros((inflate-1)*Yc.shape[0])) # adding zeros to the end of the transfored vector
-        Ys = np.append(Ys,np.zeros((inflate-1)*Ys.shape[0])) # adding zeros to the end of the transfored vector
-    DYc = np.copy(Yc)
-    DYs = np.copy(Ys)
-    DYc[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
-    DYs[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
-    dys = dst(DYc,type=3)[:inflate*sz]/(4*sz**2)
-    dyc = dct(DYs,type=3)[:inflate*sz]/(4*sz**2)
-    dy = (dyc-dys)
-    dy[:-1] /= np.cos(np.pi*np.arange(inflate*sz)/2.)[:-1]
-    y = dct(Yc,type=3)[:inflate*sz]
-    result = y*dy   # constructing the sig*deriv waveform 
-    return result
 
 """
 wv = hsd.raw.waveforms(evt)[1][0]
@@ -132,7 +91,7 @@ class Port:
     # Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
     # hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-    def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-1*(1<<20),inflate=1,expand=1,nrolloff=256): # exand is for sake of Newton-Raphson
+    def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-1*(1<<20),inflate=1,expand=1,nrollon=256,nrolloff=256): # exand is for sake of Newton-Raphson
         self.rng = np.random.default_rng( time.time_ns()%(1<<8) )
         self.portnum = portnum
         self.hsd = hsd
@@ -143,6 +102,7 @@ class Port:
         self.initState = True
         self.inflate = inflate
         self.expand = expand
+        self.nrollon = nrollon
         self.nrolloff = nrolloff
         self.sz = 0
         self.tofs = []
@@ -154,6 +114,11 @@ class Port:
         self.logics = {}
         self.shot = int(0)
         self.processAlgos = 'fex2hits' # add as method to set the Algo for either of 'fex2hits', 'fex2coeffs', or just 'wave'
+
+        self.e:List[np.uint32] = []
+        self.de:List[np.int32] = []
+        self.ne = 0
+        self.r = []
 
 
     @classmethod
@@ -312,22 +277,37 @@ class Port:
         print('HERE HERE HERE HERE')
         return True
 
+    def advance_event(self):
+        self.e = []
+        self.de = []
+        self.ne = 0
+        self.r = []
+        return self
+
     def process_fex2hits(self,s,x):
-        e:List[np.int32] = []
+        e = []
         de = []
         ne = 0
         r = []
         if type(s) == type(None):
-            #self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
-            print('HERE HERE HERE HERE')
-            e:List[np.int32] = []
-            de = []
-            ne = 0
             return False
         else:
+            if len(self.addresses)%100==0:
+                self.r = list(np.copy(s).astype(np.int16))
+            ## no longer needing to correct for the adc offsets. ##
+            logic = fftLogic_fex(s,inflate=self.inflate,nrollon=self.nrollon,nrolloff=self.nrolloff) #produce the "logic vector"
+            e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
+
+            self.e += e
+            self.de += de
+            self.ne += ne
+
             print('NOT DONE HERE')
+            if len(self.addresses)%100==0:
+                self.addsample(r,s,logic)
 
         return True
+
 
     def process_wave(self,s,x=0):
         e:List[np.int32] = []
@@ -380,4 +360,10 @@ class Port:
         if len(self.nedges)==0:
             return 0
         return self.nedges[-1]
+    def setRollOn(self,n):
+        self.nrollon = n
+        return self
+    def setRollOff(self,n):
+        self.nrolloff = n
+        return self
 

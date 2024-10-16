@@ -8,6 +8,8 @@ import h5py
 import os
 import socket
 
+from typing import Type,List
+
 from Ports import *
 from Ebeam import *
 from Vls import *
@@ -33,6 +35,7 @@ def main(nshots:int,expname:str,runnums:list,scratchdir:str):
     offsets = params['offsets']
 
     nr_expand = params['expand']
+    inflate = params['inflate']
 
     _= [print(k) for k in chans.keys()]
 
@@ -45,25 +48,6 @@ def main(nshots:int,expname:str,runnums:list,scratchdir:str):
     gmd = [Gmd() for r in runnums]
     _ = [e.setoffset(params['l3offset']) for e in ebunch]
     '''
-
-    port = [{} for r in runnums] 
-    inflate = params['inflate']
-
-    for r in range(len(runnums)):
-        for key in chans.keys():
-            port[r][key] = Port(key,chans[key],t0=t0s[key],logicthresh=logicthresh[key],inflate=inflate,expand=nr_expand,nrolloff=2**6)
-
-    _=[print(r) for r in runnums]
-
-    dslist = [psana.DataSource(exp=expname,run=r) for r in runnums]
-    _ = [print(d) for d in dslist]
-
-    runs = [next(ds.runs()) for ds in dslist]
-    _ = [print(r.detnames) for r in runs]
-    detslist = [r.detnames for r in runs]
-
-
-
     runhsd=True
     runtiming=True
     runfzp=False
@@ -73,19 +57,50 @@ def main(nshots:int,expname:str,runnums:list,scratchdir:str):
     runxtcav=False
     rungmd=False
     hsds = []
+    chankeys = {}
     timings = []
     fzps = []
     vlss = []
     ebeams = []
     xtcavs = []
     xgmds = []
-    for r in range(len(runnums)):
-        eventnum:int = 0
-        print('processing run %i'%runnums[r])
-        if runhsd and 'hsd_mrco' in runs[r].detnames:
-            hsds += [runs[r].Detector('hsd_mrco')]
+
+    '''
+    Setting up the datasource
+    '''
+    dsdict = {}
+    runs = {}
+    port = {}
+    chankeys = {}
+    hsds = {}
+    for r in runnums:
+        dsdict.update({r:psana.DataSource(exp=expname,run=r)})
+        runs.update({r:next(dsdict[r].runs())})
+        port.update({r:{}})
+        chankeys.update({r,[]})
+        detslist.update({r:runs[r].detnames})
+        if runhsd and 'hsd_mrco' in detlist[r]:
+            hsds.update({r:runs[r].Detector('hsd_mrco')})
+            for k in list(hsds[r].raw._seg_configs().keys()):
+                chankeys[r] += [k]
+                port[r].update({k:Port(k,chankeys[k],t0=t0s[k],logicthresh=logicthresh[k],inflate=inflate,expand=nr_expand)})
+                port[r][k].setRollOn((3*int(hsds[r].raw._seg_configs()[k].config.user.fex.xpre))>>2)
+                port[r][k].setRollOff((3*int(hsds[r].raw._seg_configs()[k].config.user.fex.xpost))>>2)
         else:
             runhsd = False
+
+    _ = [print(d) for d in dslist]
+
+
+    THIS IS GOING TO BE SUPER BROKEN... NOT LISTS ANYMORE!! DICTIONARIES
+
+
+
+
+    for r in range(len(runnums)):
+        chankeys.update({r,[]})
+        eventnum:int = 0
+        print('processing run %i'%runnums[r])
         if runfzp and 'tmo_fzppiranha' in runs[r].detnames:
             fzps += [runs[r].Detector('tmo_fzppiranha')]
         else:
@@ -136,11 +151,9 @@ def main(nshots:int,expname:str,runnums:list,scratchdir:str):
         init = True 
         vsize = 0
 
-        print('Finished with run %i'%runnums[r])
-
         print('chans: ',chans)
 
-        completeEvent:List(bool) = [True]
+        completeEvent:List[bool] = [True]
 
         for evt in runs[r].events():
             if eventnum > nshots:
@@ -151,20 +164,29 @@ def main(nshots:int,expname:str,runnums:list,scratchdir:str):
                 if type(hsds[r]) == None:
                     print(eventnum,'hsds is None')
                     completeEvent += [False]
+
                 for key in chans.keys(): # here key means 'port number'
-                    completeEvent += [port[r][key].test(hsds[r].raw.waveforms(evt)[ chans[key] ][0])]
+                    completeEvent += [port[r][key].test(hsds[r].raw.peaks(evt)[ chans[key] ][0])]
+                    #completeEvent += [port[r][key].test(hsds[r].raw.waveforms(evt)[ chans[key] ][0])]
+
+
+            ## finish testing all detectors to measure ##
+            ## before processing ##
+
             ## process hsds
             if runhsd and bool(np.prod(completeEvent)):
                 ''' HSD-Abaco section '''
                 for key in chans.keys(): # here key means 'port number'
-                    for i in range(len(hsd.raw.peaks(evt)[1][0][1])):
-                        x = np.array(hsds[r].raw.peaks(evt)[ chans[key] ][0][0][i] , dtype=np.uint32) 
-                        s = hsds[r].raw.peaks(evt)[ chans[key] ][0][1][i] , dtype=np.int16) 
-                        port[r][key].process_fex(x,s)
+                    nwins:int = len(hsd.raw.peaks(evt)[ chans[key] ][0][1]
+                    for i in range(nwins):
+                        x = hsds[r].raw.peaks(evt)[ chans[key] ][0][0][i] 
+                        s = np.array(hsds[r].raw.peaks(evt)[ chans[key] ][0][1][i],)
+                        port[r][key].process(s,x)
                     #s = np.array(hsds[r].raw.waveforms(evt)[ chans[key] ][0] , dtype=np.int16) # presumably 12 bits unsigned input, cast as int16_t since will immediately in-place subtract baseline
-                    #port[r][key].process(s)
+                    #port[r][key].process(s,x=0).advance_event()
             eventnum += 1
 
+        print('Finished with run %i'%runnums[r])
         print('returning')
         return
 
