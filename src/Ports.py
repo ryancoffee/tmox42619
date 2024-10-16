@@ -284,7 +284,7 @@ class Port:
         self.r = []
         return self
 
-    def process_fex2hits(self,s,x):
+    def process_fex2hits(self,slist,xlist):
         e = []
         de = []
         ne = 0
@@ -292,11 +292,12 @@ class Port:
         if type(s) == type(None):
             return False
         else:
-            if len(self.addresses)%100==0:
-                self.r = list(np.copy(s).astype(np.int16))
-            ## no longer needing to correct for the adc offsets. ##
-            logic = fftLogic_fex(s,inflate=self.inflate,nrollon=self.nrollon,nrolloff=self.nrolloff) #produce the "logic vector"
-            e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
+            for i,s in enumerate(slist):
+                if len(self.addresses)%100==0:
+                    self.r = list(np.copy(s).astype(np.int16))
+                ## no longer needing to correct for the adc offsets. ##
+                logic = fftLogic_fex(s,inflate=self.inflate,nrollon=self.nrollon,nrolloff=self.nrolloff) #produce the "logic vector"
+                e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
 
             self.e += e
             self.de += de
@@ -309,11 +310,13 @@ class Port:
         return True
 
 
-    def process_wave(self,s,x=0):
+    def process_wave(self,slist,xlist=[0]):
         e:List[np.int32] = []
         de = []
         ne = 0
         r = []
+        s = slist[0]
+        x = xlist[0]
         if type(s) == type(None):
             #self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
             e:List[np.int32] = []
