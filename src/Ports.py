@@ -113,7 +113,7 @@ class Port:
         self.waves = {}
         self.logics = {}
         self.shot = int(0)
-        self.processAlgos = 'fex2hits' # add as method to set the Algo for either of 'fex2hits', 'fex2coeffs', or just 'wave'
+        self.processAlgo = 'fex2hits' # add as method to set the Algo for either of 'fex2hits', 'fex2coeffs', or just 'wave'
 
         self.e:List[np.uint32] = []
         self.de:List[np.int32] = []
@@ -270,7 +270,7 @@ class Port:
         if self.processAlgo =='fex2coeffs':
             return process_vfex2coeffs(s,x)
         elif self.processAlgo == 'fex2hits':
-            return process_fex2hits(s,x)
+            return self.process_fex2hits(s,x)
         return process_wave(s,x=0)
 
     def process_fex2coeffs(self,s,x):
@@ -289,7 +289,8 @@ class Port:
         de = []
         ne = 0
         r = []
-        if type(s) == type(None):
+        goodlist = [type(s)!=type(None) for s in slist]
+        if np.prod(goodlist).astype(bool):
             return False
         else:
             for i,s in enumerate(slist):

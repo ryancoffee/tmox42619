@@ -4,11 +4,11 @@ import h5py
 import numpy as np
 
 class Config:
-    def __init__(self):
+    def __init__(self,is_fex=False):
         self.hsdchannels = {}
         self.params = {'devices':[]}
         #self.chans = {0:3,1:9,2:11,4:10,5:12,12:5,13:6,14:8,15:2,16:13}
-        self.params['chans'] = {0:0,1:1}
+        #self.params['chans'] = {0:0,1:1}
         self.params.update({'vlsthresh':1000})
         self.params.update({'vlswin':(1024,2048)})
         self.params.update({'l3offset':5100})
@@ -22,7 +22,10 @@ class Config:
             self.params['logicthresh'][k] >>= 2
             self.params['offsets'].update({k:[0]*4})
 
+        self.is_fex = is_fex
+        self.params.update({'is_fex':self.is_fex})
 
+        '''
         self.params.update({'hsdchannels':{'mrco_hsd_0':'hsd_1B_A',
             'mrco_hsd_22':'hsd_1B_B',
             'mrco_hsd_45':'hsd_1A_A',
@@ -39,6 +42,7 @@ class Config:
             'mrco_hsd_292':'hsd_B2_B',
             'mrco_hsd_315':'hsd_B1_A',
             'mrco_hsd_337':'hsd_B1_B'} })
+        '''
         return None
 
     def fillconfigs_fromH5(self,cfgname:str):
@@ -52,7 +56,7 @@ class Config:
                 m = re.search('^\w+_(\d+)$',p)
                 if m:
                     k = int(m.group(1))
-                    self.params['chans'][k] = f[p].attrs['hsd']
+                    #self.params['chans'][k] = f[p].attrs['hsd']
                     self.params['t0s'][k] = f[p].attrs['t0']
                     self.params['logicthresh'][k] = f[p].attrs['logicthresh']
                     self.params['offsets'][k] = f[p].attrs['offsets']
@@ -69,6 +73,7 @@ class Config:
             f.attrs.create('vlsthresh',data=self.params['vlsthresh'])
             f.attrs.create('vlswin',data=self.params['vlswin'])
             f.attrs.create('l3offset',data=self.params['l3offset'])
+            '''
             for k in self.params['chans'].keys():
                 key = 'port_%i'%int(k)
                 c = f.create_group(key)
@@ -76,5 +81,6 @@ class Config:
                 c.attrs.create('t0',data=self.params['t0s'][k])
                 c.attrs.create('logicthresh',data=self.params['logicthresh'][k])
                 c.attrs.create('offsets',data=self.params['offsets'][k])
+                '''
         return self
 
