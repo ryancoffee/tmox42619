@@ -22,7 +22,7 @@ from utils import *
 
 def main(nshots:int,expname:str,runnums:List[int],scratchdir:str):
   
-    outnames = ['%s/hits.%s.run_%03i.h5'%(scratchdir,expname,r) for r in runnums]
+    outnames = {}
 
     _=[print('starting analysis exp %s for run %i'%(expname,int(r))) for r in runnums]
 
@@ -30,7 +30,7 @@ def main(nshots:int,expname:str,runnums:List[int],scratchdir:str):
     #### CONFIGURATION ####
     #######################
     cfgname = '%s/%s.%s.configs.h5'%(scratchdir,expname,os.environ.get('USER'))
-    configs = Config(is_fex=True)
+    configs = Config(is_fex=False)
     params = configs.writeconfigs(cfgname).getparams()
     is_fex = params['is_fex']
     t0s = params['t0s']
@@ -80,46 +80,43 @@ def main(nshots:int,expname:str,runnums:List[int],scratchdir:str):
     detslist = {}
     hsdnames = {}
     print(runnums)
-    for run in ds.runs():
+    for r in runnums:
+        run = next(ds.runs())
         rkey = run.runnum
+        port.update({rkey:{}})
+        hsds.update({rkey:{}})
+        chankeys.update({rkey:{}})
         detslist.update({rkey:[s for s in run.detnames]})
+        outnames.update({rkey:'%s/hits.%s.run_%03i.h5'%(scratchdir,expname,rkey)})
 
         hsdslist = [s for s in detslist[rkey] if re.search('hsd',s)]
-        _=[print(v) for v in hsdslist]
 
         hsdnames.update({rkey:hsdslist})
 
-        _= [print(n) for n in hsdnames[rkey]]
-
+        print('writing to %s'%outnames[rkey])
         for hsdname in hsdnames[rkey]:
-            port.update({hsdname:{}})
-            hsds.update({hsdname:{}})
-            chankeys.update({hsdname:{}})
+            port[rkey].update({hsdname:{}})
+            chankeys[rkey].update({hsdname:{}})
             if runhsd and hsdname in detslist[rkey]:
-                hsds[hsdname].update({rkey:run.Detector(hsdname)})
-                port[hsdname].update({rkey:{}})
-                chankeys[hsdname].update({rkey:{}})
-                for i,k in enumerate(list(hsds[hsdname][rkey].raw._seg_configs().keys())):
-                    chankeys[hsdname][rkey].update({k:i}) # this we may want to replace with the PCIe address id or the HSD serial number.
-                    port[hsdname][rkey].update({k:Port(k,chankeys[hsdname][rkey][k],t0=t0s[k],logicthresh=logicthresh[k],inflate=inflate,expand=nr_expand)})
+                hsds[rkey].update({hsdname:run.Detector(hsdname)})
+                port[rkey].update({hsdname:{}})
+                chankeys[rkey].update({hsdname:{}})
+                for i,k in enumerate(list(hsds[rkey][hsdname].raw._seg_configs().keys())):
+                    chankeys[rkey][hsdname].update({k:k}) # this we may want to replace with the PCIe address id or the HSD serial number.
+                    #print(k,chankeys[rkey][hsdname][k])
+                    #port[rkey][hsdname].update({k:Port(k,chankeys[rkey][hsdname][k],t0=t0s[i],logicthresh=logicthresh[i],inflate=inflate,expand=nr_expand)})
+                    port[rkey][hsdname].update({k:Port(k,chankeys[rkey][hsdname][k],inflate=inflate,expand=nr_expand)})
+                    port[rkey][hsdname][k].set_runkey(rkey).set_hsdname(hsdname)
                     if is_fex:
-                        port[hsdname][rkey][k].setRollOn((3*int(hsds[hsdname][rkey].raw._seg_configs()[k].config.user.fex.xpre))>>2) # guessing that 3/4 of the pre and post extension for threshold crossing in fex is a good range for the roll on and off of the signal
-                        port[hsdname][rkey][k].setRollOff((3*int(hsds[hsdname][rkey].raw._seg_configs()[k].config.user.fex.xpost))>>2)
+                        port[rkey][hsdname][k].setRollOn((3*int(hsds[rkey][hsdname].raw._seg_configs()[k].config.user.fex.xpre))>>2) # guessing that 3/4 of the pre and post extension for threshold crossing in fex is a good range for the roll on and off of the signal
+                        port[rkey][hsdname][k].setRollOff((3*int(hsds[rkey][hsdname].raw._seg_configs()[k].config.user.fex.xpost))>>2)
                     else:
-                        port[hsdname][rkey][k].setRollOn((int(hsds[hsdname][rkey].raw._seg_configs()[k].config.user.fex.xpre))<<3) # guessing that rolling on and off the signal at the ends of the waveforms will be good if it seems to be about 8x default value (of 8) for pre and post fex when no fex is used.
-                        port[hsdname][rkey][k].setRollOff((int(hsds[hsdname][rkey].raw._seg_configs()[k].config.user.fex.xpost))<<3)
+                        port[rkey][hsdname][k].setRollOn(1<<6) 
+                        port[rkey][hsdname][k].setRollOff(1<<6)
             else:
                 runhsd = False
 
-    #THIS IS GOING TO BE SUPER BROKEN... NOT LISTS ANYMORE!! DICTIONARIES
-
-
-
-
         '''
-    for run in ds.runs():
-        rkey = run.runnum
-        eventnum:int = 0
         print('processing run %i'%rkey)
         if runfzp and 'tmo_fzppiranha' in run.detnames:
             fzps += [run.Detector('tmo_fzppiranha')]
@@ -130,50 +127,15 @@ def main(nshots:int,expname:str,runnums:List[int],scratchdir:str):
             timings += [runs[r].Detector('timing')]
         else:
             runtiming = False
-
-        if runvls and 'andor' in runs[r].detnames:
-            vlss += [runs[r].Detector('andor')]
-        else:
-            runvls = False
-
-        if runebeam and 'ebeam' in runs[r].detnames:
-            ebeams += [runs[r].Detector('ebeam')]
-        else:
-            runebeam = False
-
-        if runxtcav and 'xtcav' in runs[r].detnames:
-            xtcavs += [runs[r].Detector('xtcav')]
-        else:
-            runxtcav = False
-
-        if rungmd and 'xgmd' in runs[r].detnames:
-            rungmd = True
-            xgmds += [runs[r].Detector('xgmd')]
-        else:
-            rungmd = False
-
+        '''
         wv = {}
         wv_logic = {}
-        v = [] # vls data matrix
-        vc = [] # vls centroids vector
-        vs = [] # vls sum is I think not used, maybe for normalization or used to be for integration and PDF sampling
-        l3 = [] # e-beam l3 (linac 3) in GeV.
-        xtcavImages = []
-        xtcavX0s = []
-        xtcavY0s = []
-        xtcavEvents = []
-
-        vlsEvents = []
-        hsdEvents = []
-        ebeamEvents = []
-        gmdEvents =[]
-
         init = True 
         vsize = 0
+        hsdEvents = []
 
-        '''
 
-        eventnum = 0 # later move this to outside the runs loop and let eventnum increase over all of the serial runs.
+        eventnum:int = 0 # later move this to outside the runs loop and let eventnum increase over all of the serial runs.
 
         for evt in run.events():
             completeEvent:List[bool] = [True]
@@ -182,16 +144,24 @@ def main(nshots:int,expname:str,runnums:List[int],scratchdir:str):
             if eventnum%10==0: print(eventnum)
             ## test hsds
             if runhsd and bool(np.prod(completeEvent)):
-                for hsdname in hsds.keys():
-                    if type(hsds[hsdname][rkey]) == None:
+                for i,hsdname in enumerate(hsds[rkey].keys()):
+                    if (type(hsds[rkey][hsdname]) != None): 
+                        for key in chankeys[rkey][hsdname]: # here key means 'port number'
+                            if is_fex:
+                                if (hsds[rkey][hsdname].raw.peaks(evt) != None):
+                                    completeEvent += [port[rkey][hsdname][key].test(hsds[rkey][hsdname].raw.peaks(evt)[ key ][0])]
+                                else:
+                                    print(eventnum,'hsds[%i][%s].raw.peaks(evt) is None'%(rkey,hsdname))
+                                    completeEvent += [False]
+                            else:
+                                if (hsds[rkey][hsdname].raw.waveforms(evt) != None):
+                                    completeEvent += [port[rkey][hsdname][key].test(hsds[rkey][hsdname].raw.waveforms(evt)[ key ][0])]
+                                else:
+                                    print(eventnum,'hsds[%i][%s].raw.waveforms(evt) is None'%(rkey,hsdname))
+                                    completeEvent += [False]
+                    else:
                         print(eventnum,'hsds is None')
                         completeEvent += [False]
-
-                    for key in chankeys[hsdname][rkey]: # here key means 'port number'
-                        if is_fex:
-                            completeEvent += [port[hsdname][rkey][key].test(hsds[hsdname][rkey].raw.peaks(evt)[ key ][0])]
-                        else:
-                            completeEvent += [port[hsdname][rkey][key].test(hsds[hsdname][rkey].raw.waveforms(evt)[ key ][0])]
 
 
 
@@ -200,187 +170,69 @@ def main(nshots:int,expname:str,runnums:List[int],scratchdir:str):
 
             ## process hsds
             if runhsd and bool(np.prod(completeEvent)):
-                for hsdname in hsds.keys():
+                for hsdname in hsds[rkey].keys():
                     ''' HSD-Abaco section '''
-                    for key in chankeys[hsdname][rkey]: # here key means 'port number'
+                    for key in chankeys[rkey][hsdname]: # here key means 'port number'
                         nwins:int = 1
                         xlist:List[int] = []
                         slist:List[ List[int] ] = []
                         if is_fex:
-                            nwins = len(hsds[hsdname][rkey].raw.peaks(evt)[ key ][0][0])
+                            nwins = len(hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][0])
                             for i in range(nwins):
-                                xlist += [ hsds[hsdname][rkey].raw.peaks(evt)[ key ][0][0][i] ]
-                                slist += [ np.array(hsds[hsdname][rkey].raw.peaks(evt)[ key ][0][1][i],) ]
+                                xlist += [ hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][0][i] ]
+                                slist += [ np.array(hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][1][i],) ]
                         else:
-                            slist += [ np.array(hsds[hsdname][rkey].raw.waveforms(evt)[ key ][0] , dtype=np.int16) ] # presumably 12 bits unsigned input, cast as int16_t since will immediately in-place subtract baseline
+                            slist += [ np.array(hsds[rkey][hsdname].raw.waveforms(evt)[ key ][0] , dtype=np.int16) ] # presumably 12 bits unsigned input, cast as int16_t since will immediately in-place subtract baseline
                             xlist += [0]
-                        port[hsdname][rkey][key].process(slist,xlist) # this making a list out of the waveforms is to accommodate both the fex and the non-fex with the same Port object and .process() method.
-            eventnum += 1
+                        port[rkey][hsdname][key].process(slist,xlist) # this making a list out of the waveforms is to accommodate both the fex and the non-fex with the same Port object and .process() method.
 
-            if bool(np.prod(completeEvent)):
-
-        print('Finished with run %i'%rkey)
-        print('returning')
-        return
-
-"""
             ## redundant events vec
             if bool(np.prod(completeEvent)):
-                if runebeam:
-                    ebeamEvents += [eventnum]
-                if runvls:
-                    vlsEvents += [eventnum]
-                if runxtcav:
-                    xtcavEvents += [eventnum]
-                if rungmd:
-                    gmdEvents += [eventnum]
                 if runhsd:
                     hsdEvents += [eventnum]
 
-        with h5py.File(outnames[r],'w') as f:
-            print('writing to %s'%outnames[r])
-            if runhsd:
-                Port.update_h5(f,port[r],hsdEvents,chans)
-            if runvls:
-                Vls.update_h5(f,spect[r],vlsEvents)
-            if runebeam:
-                Ebeam.update_h5(f,ebunch[r],ebeamEvents)
-            if rungmd:
-                Gmd.update_h5(f,gmd[r],gmdEvents)
-
-
-            if runxtcav and bool(np.prod(completeEvent)):
-                try:
-                    if type(xtcav.raw.value(evt)) == None:
-                        print(eventnum,'skip per problem with XTCAV')
-                        completeEvent += [False]
-                        continue
-                    else:
-                        img = np.copy(xtcav.raw.value(evt)).astype(np.int16)
-                        mf = np.argmax(np.histogram(img,np.arange(2**8))[0])
-                        img -= mf
-                        imgcrop,x0,y0 = xtcav_crop(img,win=(512,256))
-                        xtcavImages += [imgcrop]
-                        xtcavX0s += [x0]
-                        xtcavY0s += [y0]
-                        completeEvent += [True]
-                except:
-                    print(eventnum,'skipping xtcav, skip per failed try:')
-                    completeEvent += [False]
-                    continue
-
-
-## test vlswv
-            vlswv = None
-            if runvls and bool(np.prod(completeEvent)):
-                ''' VLS specific section, do this first to slice only good shots '''
-                if type(vlss[r]) == None:
-                    print(eventnum,'skip per problem with VLS')
-                    completeEvent += [False]
-                    continue
-                vlswv = np.squeeze(vlss[r].raw.value(evt))
-                completeEvent += [spect[r].test(vlswv)]
-
-
-## test thisl3
-            thisl3 = None
-            if runebeam and bool(np.prod(completeEvent)):
-                ''' Ebeam specific section '''
-                if type(ebeams[r]) == None:
-                    print(eventnum,'ebeam is None')
-                    completeEvent += [False]
-                    continue
-                thisl3 = ebeams[r].raw.ebeamL3Energy(evt)
-                completeEvent += [ebunch[r].test(thisl3)]
-
-
-## test thisgmde
-            thisgmde = None
-            if rungmd and bool(np.prod(completeEvent)):
-                if type(xgmds[r]) == None:
-                    print(eventnum,'gmd is None')
-                    completeEvent += [False]
-                    continue
-                thisgmde = xgmds[r].raw.energy(evt)
-                completeEvent += [gmd[r].test(thisgmde)]
-
-
-
-
-## process VLS
-            if runvls and bool(np.prod(completeEvent)):
-                spect[r].process(vlswv)
-
-## process ebeam
-            if runebeam and bool(np.prod(completeEvent)):
-                ebunch[r].process(thisl3)
-
-## process gmd
-            if rungmd and bool(np.prod(completeEvent)):
-                gmd[r].process(thisgmde)
-
-
-
-
+            if init:
+                init = False
+                for hsdname in port[rkey].keys():
+                    for key in port[rkey][hsdname].keys():
+                        port[rkey][hsdname][key].set_initState(False)
 
             eventnum += 1
+
+
+            if runhsd:
+                if eventnum<2:
+                    for hsdname in hsds[rkey].keys():
+                        print('ports = %s'%([k for k in chankeys[rkey][hsdname].keys()]))
+                if eventnum<100 and eventnum%10==0: 
+                    for hsdname in hsds[rkey].keys():
+                        print('working event %i,\tnedges = %s'%(eventnum,[port[rkey][hsdname][k].getnedges() for k in chankeys[rkey][hsdname]] ))
+                elif eventnum<1000 and eventnum%100==0: 
+                    for hsdname in hsds[rkey].keys():
+                        print('working event %i,\tnedges = %s'%(eventnum,[port[rkey][hsdname][k].getnedges() for k in chankeys[rkey][hsdname]] ))
+                else:
+                    if eventnum%1000==0: 
+                        for hsdname in hsds[rkey].keys():
+                            print('working event %i,\tnedges = %s'%(eventnum,[port[rkey][hsdname][k].getnedges() for k in chankeys[rkey][hsdname]] ))
+
+
+            if eventnum > 1 and eventnum <1000 and eventnum%100==0:
+                with h5py.File(outnames[rkey],'w') as f:
+                    print('writing to %s'%outnames[rkey])
+                    if runhsd:
+                        Port.update_h5(f,port,hsdEvents)
+
+            elif eventnum>900 and eventnum%1000==0:
+                with h5py.File(outnames[rkey],'w') as f:
+                    print('writing to %s'%outnames[rkey])
+                    if runhsd:
+                        Port.update_h5(f,port,hsdEvents)
+        # end event loop
+
+ 
 
     print("Hello, I'm done now.  Have a most excellent day!")
     return
-
-
-
-
-                if eventnum<2:
-                        print('ports = %s'%([k for k in chans.keys()]))
-                if eventnum<100:
-                    if eventnum%10==0: 
-                        print('working event %i,\tnedges = %s'%(eventnum,[port[r][k].getnedges() for k in chans.keys()] ))
-                elif eventnum<1000:
-                    if eventnum%100==0: 
-                        print('working event %i,\tnedges = %s'%(eventnum,[port[r][k].getnedges() for k in chans.keys()] ))
-                else:
-                    if eventnum%1000==0: 
-                        print('working event %i,\tnedges = %s'%(eventnum,[port[r][k].getnedges() for k in chans.keys()] ))
-
-
-            if init:
-                init = False
-                ebunch[r].set_initState(False)
-                spect[r].set_initState(False)
-                gmd[r].set_initState(False)
-                for key in chans.keys():
-                    port[r][key].set_initState(False)
-
-            if eventnum > 1 and eventnum <1000 and eventnum%100==0:
-                with h5py.File(outnames[r],'w') as f:
-                    print('writing to %s'%outnames[r])
-                    if runhsd:
-                        Port.update_h5(f,port[r],hsdEvents,chans)
-                    if runvls:
-                        Vls.update_h5(f,spect[r],vlsEvents)
-                    if runebeam:
-                        Ebeam.update_h5(f,ebunch[r],ebeamEvents)
-                    if rungmd:
-                        Gmd.update_h5(f,gmd[r],gmdEvents)
-
-            elif eventnum>900 and eventnum%1000==0:
-                with h5py.File(outnames[r],'w') as f:
-                    print('writing to %s'%outnames[r])
-                    if runhsd:
-                        Port.update_h5(f,port[r],hsdEvents,chans)
-                    if runvls:
-                        Vls.update_h5(f,spect[r],vlsEvents)
-                    if runebeam:
-                        Ebeam.update_h5(f,ebunch[r],ebeamEvents)
-                    if rungmd:
-                        Gmd.update_h5(f,gmd[r],gmdEvents)
-
-            eventnum += 1
- 
-
-    return
-    """
 
 
 

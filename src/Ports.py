@@ -91,7 +91,7 @@ class Port:
     # Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
     # hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-    def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-1*(1<<20),inflate=1,expand=1,nrollon=256,nrolloff=256): # exand is for sake of Newton-Raphson
+    def __init__(self,portnum,hsd,inflate=1,expand=1,nrollon=256,nrolloff=256,nadcs=4,t0=0,baselim=1<<6,logicthresh=-1*(1<<20)): # exand is for sake of Newton-Raphson
         self.rng = np.random.default_rng( time.time_ns()%(1<<8) )
         self.portnum = portnum
         self.hsd = hsd
@@ -120,58 +120,80 @@ class Port:
         self.ne = 0
         self.r = []
 
+        self.runkey = 0
+        self.hsdname = 'hsd'
+
 
     @classmethod
-    def slim_update_h5(cls,f,port,hsdEvents,chans):
-        for key in chans.keys(): # remember key == port number
-            g = None
-            if 'port_%i'%(key) in f.keys():
-                g = f['port_%i'%(key)]
-            else:
-                g = f.create_group('port_%i'%(key))
-            g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint64) 
-            g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
-            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
-            g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint64)
-            g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
-            g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
-            g.attrs.create('t0',data=port[key].t0,dtype=float)
-            g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
-            g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-            g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
-            g.create_dataset('events',data=hsdEvents)
-        return 
+    def slim_update_h5(cls,f,port,hsdEvents):
+        print('slim_update_h5() needs to inherit only the hits and the params and only if fex/counting mode.\nCurrent mode will need to report all fex windows until CPA is run.')
+        return
 
     @classmethod
-    def update_h5(cls,f,port,hsdEvents,chans):
-        for key in chans.keys(): # remember key == port number
-            g = None
-            if 'port_%i'%(key) in f.keys():
-                g = f['port_%i'%(key)]
-                rawgrp = g['raw']
-                wvgrp = g['waves']
-                lggrp = g['logics']
-            else:
-                g = f.create_group('port_%i'%(key))
-                rawgrp = g.create_group('raw')
-                wvgrp = g.create_group('waves')
-                lggrp = g.create_group('logics')
-            g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint64) 
-            g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
-            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
-            g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint64)
-            for k in port[key].waves.keys():
-                rawgrp.create_dataset(k,data=port[key].raw[k].astype(np.uint16),dtype=np.uint16)
-                wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
-                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int32),dtype=np.int32)
-            g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
-            g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
-            g.attrs.create('t0',data=port[key].t0,dtype=float)
-            g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
-            g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-            g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
-            g.create_dataset('events',data=hsdEvents)
+    def update_h5(cls,f,port,hsdEvents):
+        rkeys = port.keys()
+        for rkey in rkeys:
+            print(rkey)
+            hsdnames = port[rkey].keys()
+            for hsdname in hsdnames:
+                print(hsdname)
+                rkeystr = 'run_%i'%(rkey)
+                rgrp = None
+                nmgrp = None
+                if rkeystr in f.keys():
+                    rgrp = f[rkeystr]
+                else:
+                    rgpr = f.create_group(rkeystr)
+                if hsdname in f[rkeystr].keys():
+                    nmgrp = f[rkeystr][hsdname]
+                else:
+                    nmgrp = f[rkeystr].create_group(hsdname)
+        
+                p = port[rkey][hsdname]
+                for key in p.keys(): # remember key == port number
+                    print(key)
+                    g = None
+                    if 'port_%i'%(key) in nmgrp.keys():
+                        g = nmgrp['port_%i'%(key)]
+                        rawgrp = g['raw']
+                        wvgrp = g['waves']
+                        lggrp = g['logics']
+                    else:
+                        g = nmgrp.create_group('port_%i'%(key))
+                        rawgrp = g.create_group('raw')
+                        wvgrp = g.create_group('waves')
+                        lggrp = g.create_group('logics')
+                    g.create_dataset('tofs',data=p[key].tofs,dtype=np.uint64) 
+                    g.create_dataset('slopes',data=p[key].slopes,dtype=np.int64) 
+                    g.create_dataset('addresses',data=p[key].addresses,dtype=np.uint64)
+                    g.create_dataset('nedges',data=p[key].nedges,dtype=np.uint64)
+                    for k in p[key].waves.keys():
+                        rawgrp.create_dataset(k,data=p[key].raw[k].astype(np.uint16),dtype=np.uint16)
+                        wvgrp.create_dataset(k,data=p[key].waves[k].astype(np.int16),dtype=np.int16)
+                        lggrp.create_dataset(k,data=p[key].logics[k].astype(np.int32),dtype=np.int32)
+                    g.attrs.create('inflate',data=p[key].inflate,dtype=np.uint8)
+                    g.attrs.create('expand',data=p[key].expand,dtype=np.uint8)
+                    g.attrs.create('t0',data=p[key].t0,dtype=float)
+                    g.attrs.create('logicthresh',data=p[key].logicthresh,dtype=np.int32)
+                    g.attrs.create('hsd',data=p[key].hsd,dtype=np.uint8)
+                    g.attrs.create('size',data=p[key].sz*p[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
+                    g.create_dataset('events',data=hsdEvents)
+        print('leaving Port.update_h5()')
         return 
+        
+    def get_runkey(self):
+        return self.runkey
+
+    def get_hsdname(self):
+        return self.hsdname
+
+    def set_runkey(self,r:int):
+        self.runkey = r
+        return self
+
+    def set_hsdname(self,n:str):
+        self.hsdname = n
+        return self
 
     def addeverysample(self,o,w,l):
         eventnum = len(self.addresses)
