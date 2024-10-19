@@ -1,5 +1,4 @@
-#!/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps-4.6.3/bin/python3
-
+#!/sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
 
 import psana
 import numpy as np

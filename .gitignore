@@ -1,4 +1,5 @@
 data_fs
 batchruns/slurm-*.out
-slurm-*.out
+slurm-*
+output-*
 

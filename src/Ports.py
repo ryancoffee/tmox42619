@@ -39,7 +39,28 @@ def fftLogic_f16(s,inflate=1,nrolloff=128):
     return -((y>>4)*(dy>>4)).astype(np.int16)
 
 
-def fftLogic(s,inflate=1,nrolloff=128):
+def fftLogic_fex(s,inflate=1,nrollon=8,nrolloff=32):
+    sz = s.shape[0]
+    result = np.zeros(sz*inflate,dtype=np.int32)
+    rollon_vec = 0.5*(1.-np.cos(np.arange(nrollon,dtype=float)*np.pi/float(nrollon))) 
+    rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff<<1,dtype=float)*np.pi/float(nrolloff))) # careful, operating on left and right of middle indices in one go...2pi now not pi.
+    smirror = np.append(s,np.flip(s,axis=0)).astype(float)
+    smirror[:nrollon] *= rollon_vec
+    smirror[-nrollon-1:] *= np.flip(rollon_vec,axis=0)
+    smirror[(sz>>1)-nrolloff:(sz>>1)+nrolloff] *= rolloff_vec
+    
+    S = fft(smirror,axis=0)
+    #S[sz-nrolloff:sz+nrolloff] *= rolloff_vec
+    if inflate>1:
+        S = np.concatenate((S[:sz],np.zeros(2*sz*(inflate-1),dtype=complex),S[sz:]))
+    Sy = np.copy(S)*sz
+    S[:sz] *= 1j*np.arange(sz,dtype=float)/(sz)
+    S[-sz:] *= np.flip(-1j*np.arange(sz,dtype=float)/(sz),axis=0)
+    y = ifft(Sy,axis=0).real[:(inflate*sz)]
+    dy = ifft(S,axis=0).real[:(inflate*sz)]
+    return -y*dy
+
+def fftLogic(s,inflate=1,nrollon=64,nrolloff=128):
     sz = s.shape[0]
     result = np.zeros(sz*inflate,dtype=np.int32)
     rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff<<1,dtype=float)*2*np.pi/float(nrolloff))) # careful, operating on left and right of middle indices in one go...2pi now not pi.
@@ -55,75 +76,22 @@ def fftLogic(s,inflate=1,nrolloff=128):
     dy = ifft(S,axis=0).real[:(inflate*sz)]
     return -y*dy
 
-def dctLogicInt(s,inflate=1,nrolloff=128):
-    '''
-    Cutting off the tail of the y before back transforming and multiplying
-    This is to reduce distortion of the dy signal when suplressing noise by multiplying by signal.
-    '''
-    sz = s.shape[0]
-    result = np.zeros(sz*inflate,dtype=np.int32)
-    ampscale = 1<<8
-    rolloff_vec = ((ampscale>>1)*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))).astype(np.int64)
-    sc = np.append(s,np.flip(s,axis=0)).astype(np.int32)
-    ss = np.append(s,np.flip(-1*s,axis=0)).astype(np.int32)
-    wc = dct(sc,type=2,axis=0).astype(np.int64)
-    ws = dst(ss,type=2,axis=0).astype(np.int64)
-    wc[-nrolloff:] *= rolloff_vec
-    ws[-nrolloff:] *= rolloff_vec
-    wc[:-nrolloff] *= ampscale # scaling since we are keeping to int32
-    ws[:-nrolloff] *= ampscale
-    wy = np.copy(wc)
-    if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
-        wc = np.append(wc,np.zeros((inflate-1)*wc.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
-        ws = np.append(ws,np.zeros((inflate-1)*ws.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
-        wy = np.append(wy,np.zeros((inflate-1)*wy.shape[0],dtype=np.int64)) # adding zeros to the end of the transfored vector
-    wc[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
-    ws[:s.shape[0]] *= np.arange(s.shape[0],dtype=np.int64) # producing the transform of the derivative
-    dsc = (dst(wc,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int64)
-    dcs = (dct(ws,type=3)[:inflate*sz]//(4*sz**2)).astype(np.int64)
-    dy = (dcs-dsc)
-    y = (dct(wy,type=3,axis=0)[:inflate*sz]//(4*sz)).astype(np.int64)
-    result = dy*tanhInt(-y,bits=8)   # constructing the logic waveform 
-    return result
-
-def dctLogic(s,inflate=1,nrolloff=128):
-    result = np.zeros(s.shape,dtype=np.float32)
-    if nrolloff>winsz:
-        print('rolloff larger than windowed signal vec')
-        return result
-    if nrolloff!=0:
-        print('rolloff is non-zero... dont bother with that')
-        return result
-    
-    rolloff_vec = 0.5*(1.+np.cos(np.arange(nrolloff,dtype=float)*np.pi/float(nrolloff)))
-    sz_roll = rolloff_vec.shape[0] 
-    sz = s.shape[0]
-    Yc = dct(np.append(s,np.flip(s,axis=0)),type=2)
-    Ys = dst(np.append(s,np.flip(s,axis=0)),type=2)
-    Yc[-sz_roll:] *= rolloff_vec
-    Ys[-sz_roll:] *= rolloff_vec
-    if inflate>1: # inflating seems to increase the aliasing... so keeping to inflate=1 for the time being.
-        Yc = np.append(Yc,np.zeros((inflate-1)*Yc.shape[0])) # adding zeros to the end of the transfored vector
-        Ys = np.append(Ys,np.zeros((inflate-1)*Ys.shape[0])) # adding zeros to the end of the transfored vector
-    DYc = np.copy(Yc)
-    DYs = np.copy(Ys)
-    DYc[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
-    DYs[:s.shape[0]] *= np.arange(s.shape[0],dtype=float)/s.shape[0] # producing the transform of the derivative
-    dys = dst(DYc,type=3)[:inflate*sz]/(4*sz**2)
-    dyc = dct(DYs,type=3)[:inflate*sz]/(4*sz**2)
-    dy = (dyc-dys)
-    dy[:-1] /= np.cos(np.pi*np.arange(inflate*sz)/2.)[:-1]
-    y = dct(Yc,type=3)[:inflate*sz]
-    result = y*dy   # constructing the sig*deriv waveform 
-    return result
-
+"""
+wv = hsd.raw.waveforms(evt)[1][0]
+wvx = np.arange(wv.shape[0])
+y = [hsd.raw.peaks(evt)[1][0][1][i] for i in range(len(hsd.raw.peaks(evt)[1][0][1]))]
+x = [np.arange(hsd.raw.peaks(evt)[1][0][0][i],hsd.raw.peaks(evt)[1][0][0][i]+len(hsd.raw.peaks(evt)[1][0][1][i])) for i in range(len(y))]
+plt.plot(wv)
+_=[plt.plot(x[i],y[i]) for i in range(len(y))]
+plt.show()
+"""
 
 class Port:
     # Note that t0s are aligned with 'prompt' in the digitizer logic signal
     # Don't forget to multiply by inflate, also, these look to jitter by up to 1 ns
     # hard coded the x4 scale-up for the sake of filling int16 dynamic range with the 12bit vls data and finer adjustment with adc offset correction
 
-    def __init__(self,portnum,hsd,t0=0,nadcs=4,baselim=1000,logicthresh=-1*(1<<20),inflate=1,expand=1,nrolloff=256): # exand is for sake of Newton-Raphson
+    def __init__(self,portnum,hsd,inflate=1,expand=1,nrollon=256,nrolloff=256,nadcs=4,t0=0,baselim=1<<6,logicthresh=-1*(1<<20)): # exand is for sake of Newton-Raphson
         self.rng = np.random.default_rng( time.time_ns()%(1<<8) )
         self.portnum = portnum
         self.hsd = hsd
@@ -134,6 +102,7 @@ class Port:
         self.initState = True
         self.inflate = inflate
         self.expand = expand
+        self.nrollon = nrollon
         self.nrolloff = nrolloff
         self.sz = 0
         self.tofs = []
@@ -144,37 +113,87 @@ class Port:
         self.waves = {}
         self.logics = {}
         self.shot = int(0)
+        self.processAlgo = 'fex2hits' # add as method to set the Algo for either of 'fex2hits', 'fex2coeffs', or just 'wave'
+
+        self.e:List[np.uint32] = []
+        self.de:List[np.int32] = []
+        self.ne = 0
+        self.r = []
+
+        self.runkey = 0
+        self.hsdname = 'hsd'
+
 
     @classmethod
-    def update_h5(cls,f,port,hsdEvents,chans):
-        for key in chans.keys(): # remember key == port number
-            g = None
-            if 'port_%i'%(key) in f.keys():
-                g = f['port_%i'%(key)]
-                rawgrp = g['raw']
-                wvgrp = g['waves']
-                lggrp = g['logics']
-            else:
-                g = f.create_group('port_%i'%(key))
-                rawgrp = g.create_group('raw')
-                wvgrp = g.create_group('waves')
-                lggrp = g.create_group('logics')
-            g.create_dataset('tofs',data=port[key].tofs,dtype=np.uint64) 
-            g.create_dataset('slopes',data=port[key].slopes,dtype=np.int64) 
-            g.create_dataset('addresses',data=port[key].addresses,dtype=np.uint64)
-            g.create_dataset('nedges',data=port[key].nedges,dtype=np.uint64)
-            for k in port[key].waves.keys():
-                rawgrp.create_dataset(k,data=port[key].raw[k].astype(np.uint16),dtype=np.uint16)
-                wvgrp.create_dataset(k,data=port[key].waves[k].astype(np.int16),dtype=np.int16)
-                lggrp.create_dataset(k,data=port[key].logics[k].astype(np.int32),dtype=np.int32)
-            g.attrs.create('inflate',data=port[key].inflate,dtype=np.uint8)
-            g.attrs.create('expand',data=port[key].expand,dtype=np.uint8)
-            g.attrs.create('t0',data=port[key].t0,dtype=float)
-            g.attrs.create('logicthresh',data=port[key].logicthresh,dtype=np.int32)
-            g.attrs.create('hsd',data=port[key].hsd,dtype=np.uint8)
-            g.attrs.create('size',data=port[key].sz*port[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
-            g.create_dataset('events',data=hsdEvents)
+    def slim_update_h5(cls,f,port,hsdEvents):
+        print('slim_update_h5() needs to inherit only the hits and the params and only if fex/counting mode.\nCurrent mode will need to report all fex windows until CPA is run.')
+        return
+
+    @classmethod
+    def update_h5(cls,f,port,hsdEvents):
+        rkeys = port.keys()
+        for rkey in rkeys:
+            print(rkey)
+            hsdnames = port[rkey].keys()
+            for hsdname in hsdnames:
+                print(hsdname)
+                rkeystr = 'run_%i'%(rkey)
+                rgrp = None
+                nmgrp = None
+                if rkeystr in f.keys():
+                    rgrp = f[rkeystr]
+                else:
+                    rgpr = f.create_group(rkeystr)
+                if hsdname in f[rkeystr].keys():
+                    nmgrp = f[rkeystr][hsdname]
+                else:
+                    nmgrp = f[rkeystr].create_group(hsdname)
+        
+                p = port[rkey][hsdname]
+                for key in p.keys(): # remember key == port number
+                    print(key)
+                    g = None
+                    if 'port_%i'%(key) in nmgrp.keys():
+                        g = nmgrp['port_%i'%(key)]
+                        rawgrp = g['raw']
+                        wvgrp = g['waves']
+                        lggrp = g['logics']
+                    else:
+                        g = nmgrp.create_group('port_%i'%(key))
+                        rawgrp = g.create_group('raw')
+                        wvgrp = g.create_group('waves')
+                        lggrp = g.create_group('logics')
+                    g.create_dataset('tofs',data=p[key].tofs,dtype=np.uint64) 
+                    g.create_dataset('slopes',data=p[key].slopes,dtype=np.int64) 
+                    g.create_dataset('addresses',data=p[key].addresses,dtype=np.uint64)
+                    g.create_dataset('nedges',data=p[key].nedges,dtype=np.uint64)
+                    for k in p[key].waves.keys():
+                        rawgrp.create_dataset(k,data=p[key].raw[k].astype(np.uint16),dtype=np.uint16)
+                        wvgrp.create_dataset(k,data=p[key].waves[k].astype(np.int16),dtype=np.int16)
+                        lggrp.create_dataset(k,data=p[key].logics[k].astype(np.int32),dtype=np.int32)
+                    g.attrs.create('inflate',data=p[key].inflate,dtype=np.uint8)
+                    g.attrs.create('expand',data=p[key].expand,dtype=np.uint8)
+                    g.attrs.create('t0',data=p[key].t0,dtype=float)
+                    g.attrs.create('logicthresh',data=p[key].logicthresh,dtype=np.int32)
+                    g.attrs.create('hsd',data=p[key].hsd,dtype=np.uint8)
+                    g.attrs.create('size',data=p[key].sz*p[key].inflate,dtype=np.uint64) ### need to also multiply by expand #### HERE HERE HERE HERE
+                    g.create_dataset('events',data=hsdEvents)
+        print('leaving Port.update_h5()')
         return 
+        
+    def get_runkey(self):
+        return self.runkey
+
+    def get_hsdname(self):
+        return self.hsdname
+
+    def set_runkey(self,r:int):
+        self.runkey = r
+        return self
+
+    def set_hsdname(self,n:str):
+        self.hsdname = n
+        return self
 
     def addeverysample(self,o,w,l):
         eventnum = len(self.addresses)
@@ -269,11 +288,58 @@ class Port:
             return False
         return True
 
-    def process(self,s):
+    def process(self,s,x=0):
+        if self.processAlgo =='fex2coeffs':
+            return process_vfex2coeffs(s,x)
+        elif self.processAlgo == 'fex2hits':
+            return self.process_fex2hits(s,x)
+        return process_wave(s,x=0)
+
+    def process_fex2coeffs(self,s,x):
+        print('HERE HERE HERE HERE')
+        return True
+
+    def advance_event(self):
+        self.e = []
+        self.de = []
+        self.ne = 0
+        self.r = []
+        return self
+
+    def process_fex2hits(self,slist,xlist):
+        e = []
+        de = []
+        ne = 0
+        r = []
+        goodlist = [type(s)!=type(None) for s in slist]
+        if np.prod(goodlist).astype(bool):
+            return False
+        else:
+            for i,s in enumerate(slist):
+                if len(self.addresses)%100==0:
+                    self.r = list(np.copy(s).astype(np.int16))
+                ## no longer needing to correct for the adc offsets. ##
+                logic = fftLogic_fex(s,inflate=self.inflate,nrollon=self.nrollon,nrolloff=self.nrolloff) #produce the "logic vector"
+                e,de,ne = self.scanedges_simple(logic) # scan the logic vector for hits
+
+            self.e += e
+            self.de += de
+            self.ne += ne
+
+            print('NOT DONE HERE')
+            if len(self.addresses)%100==0:
+                self.addsample(r,s,logic)
+
+        return True
+
+
+    def process_wave(self,slist,xlist=[0]):
         e:List[np.int32] = []
         de = []
         ne = 0
         r = []
+        s = slist[0]
+        x = xlist[0]
         if type(s) == type(None):
             #self.addsample(np.zeros((2,),np.int16),np.zeros((2,),np.float16))
             e:List[np.int32] = []
@@ -320,4 +386,10 @@ class Port:
         if len(self.nedges)==0:
             return 0
         return self.nedges[-1]
+    def setRollOn(self,n):
+        self.nrollon = n
+        return self
+    def setRollOff(self,n):
+        self.nrolloff = n
+        return self
 

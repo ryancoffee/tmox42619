@@ -1,0 +1,29 @@
+>>> dir(hsd.raw)
+['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_add_fields', '_calibconst', '_configs', '_det_name', '_dettype', '_drp_class_name', '_env_store', '_evt', '_hsdsegments', '_info', '_isNewEvt', '_load_config', '_padEvt', '_padLength', '_padValue', '_parseEvt', '_peakTimesDict', '_return_types', '_seg_chans', '_seg_configs', '_segments', '_sorted_segment_inds', '_spDict', '_uniqueid', '_var_name', 'config', 'padded', 'peak_times', 'peaks', 'waveforms']
+>>> dir(hsd.raw._seg_configs())
+['__class__', '__class_getitem__', '__contains__', '__delattr__', '__delitem__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getitem__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__ior__', '__iter__', '__le__', '__len__', '__lt__', '__ne__', '__new__', '__or__', '__reduce__', '__reduce_ex__', '__repr__', '__reversed__', '__ror__', '__setattr__', '__setitem__', '__sizeof__', '__str__', '__subclasshook__', 'clear', 'copy', 'fromkeys', 'get', 'items', 'keys', 'pop', 'popitem', 'setdefault', 'update', 'values']
+>>> dir(hsd.raw._seg_configs()[0])
+['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__str__', '__subclasshook__', '_xtc', 'config']
+>>> dir(hsd.raw._seg_configs()[0].config)
+['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__str__', '__subclasshook__', 'expert', 'firmwareBuild', 'firmwareVersion', 'help', 'user']
+>>> dir(hsd.raw._seg_configs()[0].config.fex.xpre)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'psana.container.Container' object has no attribute 'fex'
+>>> dir(hsd.raw._seg_configs()[0].config)
+['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__str__', '__subclasshook__', 'expert', 'firmwareBuild', 'firmwareVersion', 'help', 'user']
+>>> dir(hsd.raw._seg_configs()[0].config.user)
+['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__str__', '__subclasshook__', 'fex', 'raw']
+>>> dir(hsd.raw._seg_configs()[0].config.user.fex))
+  File "<stdin>", line 1
+    dir(hsd.raw._seg_configs()[0].config.user.fex))
+                                                  ^
+SyntaxError: unmatched ')'
+>>> dir(hsd.raw._seg_configs()[0].config.user.fex)
+['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__str__', '__subclasshook__', 'gate_ns', 'prescale', 'start_ns', 'xpost', 'xpre', 'ymax', 'ymin']
+>>> hsd.raw._seg_configs()[0].config.user.fex.xpre
+15
+>>> hsd.raw._seg_configs()[0].config.user.fex.xpost
+45
+>>> 
+

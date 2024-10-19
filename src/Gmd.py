@@ -7,6 +7,17 @@ class Gmd:
         return 
 
     @classmethod
+    def slim_update_h5(cls,f,gmd,gmdEvents):
+        grpgmd = None
+        if 'gmd' in f.keys():
+            grpgmd = f['gmd']
+        else:
+            grpgmd = f.create_group('gmd')
+        grpgmd.create_dataset('gmdenergy',data=gmd.en,dtype=np.uint16)
+        grpgmd.create_dataset('events',data=gmdEvents)
+        return
+
+    @classmethod
     def update_h5(cls,f,gmd,gmdEvents):
         grpgmd = None
         if 'gmd' in f.keys():
