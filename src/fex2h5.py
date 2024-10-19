@@ -178,9 +178,11 @@ def main(nshots:int,expname:str,runnums:List[int],scratchdir:str):
                         slist:List[ List[int] ] = []
                         if is_fex:
                             nwins = len(hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][0])
-                            for i in range(nwins):
-                                xlist += [ hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][0][i] ]
-                                slist += [ np.array(hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][1][i],) ]
+                            if nwins >2 : # always reports the start of and the end of the fex active window.
+                                baseline = np.mean(hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][1][0].astype(np.float16))
+                                for i in range(1,nwins-2):
+                                    xlist += [ hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][0][i] ]
+                                    slist += [ np.array(hsds[rkey][hsdname].raw.peaks(evt)[ key ][0][1][i],dtype=np.int32) ]
                         else:
                             slist += [ np.array(hsds[rkey][hsdname].raw.waveforms(evt)[ key ][0] , dtype=np.int16) ] # presumably 12 bits unsigned input, cast as int16_t since will immediately in-place subtract baseline
                             xlist += [0]
